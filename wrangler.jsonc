@@ -1,6 +1,6 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "metal-tape-api",
+  "name": "metal-tape",
   "compatibility_date": "2026-05-09",
   "observability": {
     "enabled": true
