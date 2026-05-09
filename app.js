@@ -1,13 +1,12 @@
 /* =========================================================================
    THE METAL TAPE — APP MODULE
-   Underground metal news ticker. Calls Cloudflare Worker proxy at window.MT.WORKER
+   Underground metal news ticker. Live RSS via Cloudflare Worker.
    ========================================================================= */
 (function () {
   'use strict';
 
   const WORKER = (window.MT && window.MT.WORKER) || '';
   const WATCHLIST_KEY = 'metalTape_watchlist_v1';
-  const USE_LIVE_FEED = false; // Flip to true after Worker is deployed
 
   // ----------- STATE -----------
   const state = {
@@ -28,86 +27,9 @@
     watchlistInput: '',
     watchlistFilterMode: false,
     news: [],
+    feedLoading: true,
+    feedError: null,
   };
-
-  // ----------- MOCK DATA -----------
-  const MOCK_NEWS = [
-    { id:1, band:'WHITECHAPEL', headline:"DROPS NEW SINGLE 'KIN' — BRUTAL DEATHCORE RETURN", cat:'RELEASE', time:'14M', urgent:true, source:'BLABBERMOUTH', genre:'deathcore', tier:'mainstream', url:'https://blabbermouth.net' },
-    { id:2, band:'TRIVIUM', headline:'ANNOUNCES 2026 WORLD TOUR — 47 DATES CONFIRMED', cat:'TOUR', time:'32M', urgent:true, source:'METAL INJECTION', genre:'metalcore', tier:'mainstream', url:'https://metalinjection.net' },
-    { id:3, band:'SPIRITBOX', headline:'DOWNLOAD FESTIVAL 2026 — MAIN STAGE LOCKED IN', cat:'FEST', time:'1H', urgent:false, source:'LOUDWIRE', genre:'metalcore', tier:'mainstream', url:'https://loudwire.com' },
-    { id:4, band:'DESPISED ICON', headline:'REUNION ALBUM CONFIRMED — FIRST IN 7 YEARS', cat:'RELEASE', time:'2H', urgent:true, source:'BLABBERMOUTH', genre:'deathcore', tier:'mainstream', url:'https://blabbermouth.net' },
-    { id:5, band:'DEVILDRIVER', headline:'DEZ FAFARA: NEW LP "DARKER THAN ANYTHING WE\'VE DONE"', cat:'NEWS', time:'3H', urgent:false, source:'METAL HAMMER', genre:'groove metal', tier:'mainstream', url:'https://loudersound.com' },
-    { id:6, band:'REVOCATION', headline:'ADDS SECOND NORTH AMERICAN LEG — TICKETS LIVE', cat:'TOUR', time:'4H', urgent:false, source:'METAL INJECTION', genre:'tech death', tier:'mainstream', url:'https://metalinjection.net' },
-    { id:7, band:'LORNA SHORE', headline:'CRYPTOPSY TOUR — SUMMER 2026 CO-HEADLINE', cat:'TOUR', time:'5H', urgent:true, source:'BLABBERMOUTH', genre:'deathcore', tier:'mainstream', url:'https://blabbermouth.net' },
-    { id:8, band:'KNOCKED LOOSE', headline:'GRAMMY NOMINATION — METAL PERFORMANCE CATEGORY', cat:'NEWS', time:'6H', urgent:true, source:'LOUDWIRE', genre:'hardcore', tier:'mainstream', url:'https://loudwire.com' },
-    { id:9, band:'ARCHITECTS', headline:'NEW ALBUM RECORDING WRAPPED — Q2 RELEASE', cat:'RELEASE', time:'7H', urgent:false, source:'KERRANG', genre:'metalcore', tier:'mainstream', url:'https://kerrang.com' },
-    { id:10, band:'GOJIRA', headline:'HELLFEST 2026 HEADLINER — SET DETAILS LEAKED', cat:'FEST', time:'8H', urgent:false, source:'METAL INJECTION', genre:'death metal', tier:'mainstream', url:'https://metalinjection.net' },
-    { id:11, band:'SLAUGHTER TO PREVAIL', headline:'ALEX TERRIBLE ANNOUNCES SOLO PROJECT', cat:'NEWS', time:'9H', urgent:false, source:'BLABBERMOUTH', genre:'deathcore', tier:'mainstream', url:'https://blabbermouth.net' },
-    { id:12, band:'BAD OMENS', headline:'NOAH SEBASTIAN COLLAB WITH POPPY — TEASE DROPS', cat:'RELEASE', time:'10H', urgent:false, source:'LOUDWIRE', genre:'metalcore', tier:'mainstream', url:'https://loudwire.com' },
-    { id:13, band:'CARNIFEX', headline:'WORLD IS HELL TOUR — EUROPEAN DATES ADDED', cat:'TOUR', time:'11H', urgent:false, source:'METAL HAMMER', genre:'deathcore', tier:'mainstream', url:'https://loudersound.com' },
-    { id:14, band:'FIT FOR AN AUTOPSY', headline:'WILL PUTNEY: PRODUCING NEW SPIRITBOX RECORD', cat:'NEWS', time:'12H', urgent:false, source:'BLABBERMOUTH', genre:'deathcore', tier:'mainstream', url:'https://blabbermouth.net' },
-    { id:15, band:'POLARIS', headline:'TRIBUTE ALBUM FOR JESSE BREZINSKI — RELEASE DATE SET', cat:'RELEASE', time:'13H', urgent:true, source:'METAL INJECTION', genre:'metalcore', tier:'mainstream', url:'https://metalinjection.net' },
-    { id:16, band:'XENOSIS', headline:'PROLAPSED TWIN ENTOMBMENT — NEW VIDEO PREMIERES', cat:'RELEASE', time:'14H', urgent:false, source:'TECH DEATH METAL', genre:'tech death', tier:'underground', url:'https://technicaldeathmetal.org' },
-    { id:17, band:'AETHEREUS', headline:'SOPHOMORE LP "LEIDEN FROST" — TRACK BY TRACK BREAKDOWN', cat:'RELEASE', time:'15H', urgent:false, source:'TECH DEATH METAL', genre:'tech death', tier:'underground', url:'https://technicaldeathmetal.org' },
-    { id:18, band:'INFERI', headline:'SUMERIAN HORDES TOUR — SUPPORT FROM ABYSMAL DAWN', cat:'TOUR', time:'16H', urgent:false, source:'TECH DEATH METAL', genre:'tech death', tier:'underground', url:'https://technicaldeathmetal.org' },
-    { id:19, band:'DISENTOMB', headline:'AUSTRALIAN SLAM TITANS DROP NEW EP', cat:'RELEASE', time:'17H', urgent:true, source:'NO CLEAN SINGING', genre:'slam', tier:'underground', url:'https://nocleansinging.com' },
-    { id:20, band:'WORMED', headline:'COSMIC DEATH METAL LEGENDS ANNOUNCE TOUR', cat:'TOUR', time:'18H', urgent:false, source:'TECH DEATH METAL', genre:'tech death', tier:'underground', url:'https://technicaldeathmetal.org' },
-    { id:21, band:'GORGUTS', headline:'LUC LEMAY: NEW MATERIAL IN PRODUCTION', cat:'NEWS', time:'19H', urgent:false, source:'DEATH METAL UG', genre:'tech death', tier:'underground', url:'https://deathmetal.org' },
-    { id:22, band:'ARCHSPIRE', headline:'BLEED THE FUTURE FOLLOWUP — DEMOS LEAKED', cat:'RELEASE', time:'20H', urgent:true, source:'TECH DEATH METAL', genre:'tech death', tier:'underground', url:'https://technicaldeathmetal.org' },
-    { id:23, band:'BEYOND CREATION', headline:'CANADIAN PROG DEATH GIANTS RECORDING NEW LP', cat:'RELEASE', time:'21H', urgent:false, source:'TECH DEATH METAL', genre:'tech death', tier:'underground', url:'https://technicaldeathmetal.org' },
-    { id:24, band:'CATTLE DECAPITATION', headline:'TRAVIS RYAN: VOCAL DEMONSTRATION VIDEO', cat:'NEWS', time:'22H', urgent:false, source:'NO CLEAN SINGING', genre:'death metal', tier:'underground', url:'https://nocleansinging.com' },
-    { id:25, band:'DEFEATED SANITY', headline:'GERMAN BRUTALITY KINGS RETURN WITH NEW DRUMMER', cat:'NEWS', time:'23H', urgent:false, source:'TECH DEATH METAL', genre:'slam', tier:'underground', url:'https://technicaldeathmetal.org' },
-    { id:26, band:'BURIAL IN THE SKY', headline:'CONCEPT ALBUM "NEXT TO NOTHING" REVEALED', cat:'RELEASE', time:'1D', urgent:false, source:'TECH DEATH METAL', genre:'tech death', tier:'underground', url:'https://technicaldeathmetal.org' },
-    { id:27, band:'OBSCURA', headline:'GERMAN PROG DEATH MASTERS — US TOUR ANNOUNCED', cat:'TOUR', time:'1D', urgent:true, source:'TECH DEATH METAL', genre:'tech death', tier:'underground', url:'https://technicaldeathmetal.org' },
-    { id:28, band:'OCEANO', headline:'FIRST SINGLE IN 4 YEARS DROPS — "DEAD EMPIRE"', cat:'RELEASE', time:'1D', urgent:true, source:'LAMBGOAT', genre:'deathcore', tier:'underground', url:'https://lambgoat.com' },
-    { id:29, band:'BRAND OF SACRIFICE', headline:'AUSTRALIAN TOUR ANNOUNCED — FIRST TIME IN 5 YEARS', cat:'TOUR', time:'1D', urgent:false, source:'KERRANG', genre:'deathcore', tier:'mainstream', url:'https://kerrang.com' },
-    { id:30, band:'ANGELMAKER', headline:'NEW LP "BLOOD OF MY ENEMY" RELEASE DATE', cat:'RELEASE', time:'1D', urgent:false, source:'METAL INJECTION', genre:'deathcore', tier:'mainstream', url:'https://metalinjection.net' },
-    { id:31, band:'PYRREXIA', headline:'NJ DEATH METAL VETS ANNOUNCE COMEBACK ALBUM', cat:'RELEASE', time:'1D', urgent:false, source:'DEATH METAL UG', genre:'death metal', tier:'underground', url:'https://deathmetal.org' },
-    { id:32, band:'NECROT', headline:'OAKLAND DEATH SQUAD TOURING WITH GATECREEPER', cat:'TOUR', time:'1D', urgent:false, source:'NO CLEAN SINGING', genre:'death metal', tier:'underground', url:'https://nocleansinging.com' },
-    { id:33, band:'ULCERATE', headline:'NZ DISSONANT DEATH GODS RETURN', cat:'RELEASE', time:'2D', urgent:true, source:'NO CLEAN SINGING', genre:'death metal', tier:'underground', url:'https://nocleansinging.com' },
-    { id:34, band:'INFANT ANNIHILATOR', headline:'TEASES NEW MATERIAL — RETURN OF DAN WATSON?', cat:'RELEASE', time:'2D', urgent:true, source:'LAMBGOAT', genre:'deathcore', tier:'underground', url:'https://lambgoat.com' },
-    { id:35, band:'WAGE WAR', headline:'TOUR WITH SLEEP TOKEN — DATES ANNOUNCED', cat:'TOUR', time:'2D', urgent:true, source:'BLABBERMOUTH', genre:'metalcore', tier:'mainstream', url:'https://blabbermouth.net' },
-    { id:36, band:'AUGUST BURNS RED', headline:'CONSTELLATIONS 15TH ANNIVERSARY TOUR', cat:'TOUR', time:'2D', urgent:false, source:'METAL INJECTION', genre:'metalcore', tier:'mainstream', url:'https://metalinjection.net' },
-    { id:37, band:'BLOOD INCANTATION', headline:'COSMIC DEATH METAL EXPERIMENTALISTS DROP TEASER', cat:'RELEASE', time:'2D', urgent:true, source:'TECH DEATH METAL', genre:'death metal', tier:'underground', url:'https://technicaldeathmetal.org' },
-    { id:38, band:'MESHUGGAH', headline:'SWEDISH METAL GIANTS REVEAL NEW ALBUM CYCLE', cat:'RELEASE', time:'2D', urgent:false, source:'KERRANG', genre:'progressive metal', tier:'mainstream', url:'https://kerrang.com' },
-    { id:39, band:'CEPHALIC CARNAGE', headline:'COLORADO GRINDCORE LEGENDS REUNION SHOW', cat:'TOUR', time:'2D', urgent:true, source:'NO CLEAN SINGING', genre:'grindcore', tier:'underground', url:'https://nocleansinging.com' },
-    { id:40, band:'PIG DESTROYER', headline:'ANNOUNCES SPLIT EP WITH NAILS', cat:'RELEASE', time:'3D', urgent:true, source:'NO CLEAN SINGING', genre:'grindcore', tier:'underground', url:'https://nocleansinging.com' },
-    { id:41, band:'NAILS', headline:'TODD JONES INTERVIEW — NEW MATERIAL IN THE WORKS', cat:'NEWS', time:'3D', urgent:false, source:'LAMBGOAT', genre:'grindcore', tier:'underground', url:'https://lambgoat.com' },
-    { id:42, band:'FULL OF HELL', headline:'POWER VIOLENCE GIANTS DROP SURPRISE EP', cat:'RELEASE', time:'3D', urgent:true, source:'NO CLEAN SINGING', genre:'grindcore', tier:'underground', url:'https://nocleansinging.com' },
-    { id:43, band:'BABYMETAL', headline:'BLOODYWOOD TOUR — METAL CROSSOVER OF THE YEAR', cat:'TOUR', time:'3D', urgent:true, source:'LOUDWIRE', genre:'kawaii metal', tier:'mainstream', url:'https://loudwire.com' },
-    { id:44, band:'ICE NINE KILLS', headline:'NEW HORROR-THEMED LP IN PRODUCTION', cat:'RELEASE', time:'3D', urgent:false, source:'METAL INJECTION', genre:'metalcore', tier:'mainstream', url:'https://metalinjection.net' },
-    { id:45, band:'MORTICIAN', headline:'BROOKLYN DEATH/GRIND OG\'S RETURN AFTER 15 YEARS', cat:'RELEASE', time:'3D', urgent:true, source:'DEATH METAL UG', genre:'grindcore', tier:'underground', url:'https://deathmetal.org' },
-    { id:46, band:'TURNSTILE', headline:'NEW MATERIAL — GLOW ON FOLLOW-UP DUE 2026', cat:'RELEASE', time:'4D', urgent:false, source:'KERRANG', genre:'hardcore', tier:'mainstream', url:'https://kerrang.com' },
-    { id:47, band:'VENOM PRISON', headline:'EUROPEAN TOUR — BRUTALITY ON FULL DISPLAY', cat:'TOUR', time:'4D', urgent:false, source:'METAL HAMMER', genre:'death metal', tier:'mainstream', url:'https://loudersound.com' },
-    { id:48, band:'MUNICIPAL WASTE', headline:'CROSSOVER LEGENDS DROP NEW SINGLE', cat:'RELEASE', time:'4D', urgent:false, source:'BLABBERMOUTH', genre:'thrash', tier:'mainstream', url:'https://blabbermouth.net' },
-    { id:49, band:'POWER TRIP', headline:'TRIBUTE ALBUM FEATURING METAL ROYALTY ANNOUNCED', cat:'RELEASE', time:'4D', urgent:true, source:'LAMBGOAT', genre:'thrash', tier:'underground', url:'https://lambgoat.com' },
-    { id:50, band:'COUNTERPARTS', headline:'BRENDAN MURPHY DISCUSSES NEW MATERIAL', cat:'NEWS', time:'4D', urgent:false, source:'METAL INJECTION', genre:'hardcore', tier:'mainstream', url:'https://metalinjection.net' },
-    { id:51, band:'CONVERGE', headline:'JACOB BANNON: BLOODMOON II IN THE WORKS', cat:'RELEASE', time:'4D', urgent:true, source:'NO CLEAN SINGING', genre:'mathcore', tier:'underground', url:'https://nocleansinging.com' },
-    { id:52, band:'THE GHOST INSIDE', headline:'NEW ALBUM TITLE & TRACKLIST REVEALED', cat:'RELEASE', time:'5D', urgent:false, source:'KERRANG', genre:'metalcore', tier:'mainstream', url:'https://kerrang.com' },
-    { id:53, band:'SUMMONING THE LICH', headline:'TECH DEATH RIPPERS DEBUT FULL-LENGTH', cat:'RELEASE', time:'5D', urgent:true, source:'TECH DEATH METAL', genre:'tech death', tier:'underground', url:'https://technicaldeathmetal.org' },
-    { id:54, band:'IRON MAIDEN', headline:'FUTURE PAST WORLD TOUR FINAL LEG ANNOUNCED', cat:'TOUR', time:'5D', urgent:true, source:'METAL HAMMER', genre:'heavy metal', tier:'mainstream', url:'https://loudersound.com' },
-    { id:55, band:'SLAYER', headline:'RIOT FEST RETURN — TOM ARAYA HEALTH UPDATE', cat:'NEWS', time:'5D', urgent:true, source:'BLABBERMOUTH', genre:'thrash', tier:'mainstream', url:'https://blabbermouth.net' },
-    { id:56, band:'PANTERA', headline:'2026 TOUR DATES — PHIL ANSELMO INTERVIEW', cat:'TOUR', time:'5D', urgent:false, source:'METAL INJECTION', genre:'groove metal', tier:'mainstream', url:'https://metalinjection.net' },
-    { id:57, band:'METALLICA', headline:'M72 EXTENDED — ASIA & SOUTH AMERICA DATES', cat:'TOUR', time:'6D', urgent:true, source:'LOUDWIRE', genre:'thrash', tier:'mainstream', url:'https://loudwire.com' },
-    { id:58, band:'JUDAS PRIEST', headline:'INVINCIBLE SHIELD ANNIVERSARY EDITION COMING', cat:'RELEASE', time:'6D', urgent:false, source:'KERRANG', genre:'heavy metal', tier:'mainstream', url:'https://kerrang.com' },
-    { id:59, band:'ALLEGAEON', headline:'COLORADO TECH DEATH WIZARDS DROP SINGLE', cat:'RELEASE', time:'6D', urgent:false, source:'TECH DEATH METAL', genre:'tech death', tier:'underground', url:'https://technicaldeathmetal.org' },
-    { id:60, band:'INGESTED', headline:'UK TOUR ADDS 12 NEW DATES — TICKETS ON SALE', cat:'TOUR', time:'7D', urgent:false, source:'KERRANG', genre:'deathcore', tier:'mainstream', url:'https://kerrang.com' },
-    { id:61, band:'VITAL REMAINS', headline:'DEATH METAL VETERANS ANNOUNCE FIRST ALBUM IN 12 YEARS', cat:'RELEASE', time:'7D', urgent:true, source:'DEATH METAL UG', genre:'death metal', tier:'underground', url:'https://deathmetal.org' },
-    { id:62, band:'TOMB MOLD', headline:'CANADIAN DEATH METAL UNDERGROUND DROPS NEW MATERIAL', cat:'RELEASE', time:'7D', urgent:false, source:'NO CLEAN SINGING', genre:'death metal', tier:'underground', url:'https://nocleansinging.com' },
-    { id:63, band:'GATECREEPER', headline:'ARIZONA DEATH METAL CRUSHERS — TOUR DATES ADDED', cat:'TOUR', time:'8D', urgent:false, source:'NO CLEAN SINGING', genre:'death metal', tier:'underground', url:'https://nocleansinging.com' },
-    { id:64, band:'BORN OF OSIRIS', headline:'CELEBRATING 20 YEARS — ANNIVERSARY TOUR ANNOUNCED', cat:'TOUR', time:'8D', urgent:true, source:'METAL INJECTION', genre:'progressive metal', tier:'mainstream', url:'https://metalinjection.net' },
-    { id:65, band:'CHELSEA GRIN', headline:'TOM BARBER RETURNS — FIRST SHOWS BACK ANNOUNCED', cat:'TOUR', time:'8D', urgent:true, source:'BLABBERMOUTH', genre:'deathcore', tier:'mainstream', url:'https://blabbermouth.net' },
-  ];
-
-  state.news = MOCK_NEWS;
-
-  const TICKER_ITEMS = [
-    'WHITECHAPEL DROPS "KIN"', 'TRIVIUM 2026 TOUR ANNOUNCED', 'XENOSIS NEW VIDEO PREMIERES',
-    'DESPISED ICON REUNION CONFIRMED', 'LORNA SHORE × CRYPTOPSY SUMMER TOUR',
-    'BLOOD INCANTATION COSMIC TEASER', 'KNOCKED LOOSE GRAMMY NOM', 'GOJIRA HEADLINING HELLFEST',
-    'PIG DESTROYER × NAILS SPLIT', 'METALLICA M72 ASIA DATES', 'CONVERGE BLOODMOON II',
-    'VITAL REMAINS RETURN AFTER 12 YEARS',
-  ];
 
   const CATS = ['ALL', 'TOUR', 'RELEASE', 'FEST', 'NEWS'];
 
@@ -132,11 +54,11 @@
     return f;
   }
   function getAllGenres() {
-    const set = new Set(state.news.map(n => n.genre));
+    const set = new Set(state.news.map(n => n.genre).filter(Boolean));
     return ['ALL', ...Array.from(set).sort()];
   }
   function getAllBands() {
-    return Array.from(new Set(state.news.map(n => n.band))).sort();
+    return Array.from(new Set(state.news.map(n => n.band).filter(Boolean))).sort();
   }
   function getWatchlistSuggestions() {
     if (!state.watchlistInput.trim()) return [];
@@ -148,18 +70,22 @@
       || state.watchlistFilterMode || state.matchedIds !== null;
   }
 
-  // ----------- ACTIONS (exposed via MetalTape global) -----------
+  // ----------- ACTIONS -----------
   const MetalTape = {
     setFilter(f) { state.filter = f; render(); },
     setGenre(g) { state.genreFilter = g; render(); },
     setTier(t) { state.tierFilter = t; render(); },
     clearFilters() {
       state.filter = 'ALL'; state.genreFilter = 'ALL'; state.tierFilter = 'ALL';
-      state.watchlistFilterMode = false; state.matchedIds = null; state.searchQuery = '';
-      state.aiResponse = null; state.aiError = null;
+      state.watchlistFilterMode = false; state.matchedIds = null;
+      state.searchQuery = ''; state.aiResponse = null; state.aiError = null;
       render();
     },
-    toggleSearchPanel() { state.searchOpen = !state.searchOpen; state.watchlistOpen = false; render(); setTimeout(() => { const i = document.getElementById('search-input'); if (i) i.focus(); }, 50); },
+    toggleSearchPanel() {
+      state.searchOpen = !state.searchOpen; state.watchlistOpen = false;
+      render();
+      setTimeout(() => { const i = document.getElementById('search-input'); if (i) i.focus(); }, 50);
+    },
     toggleWatchlistPanel() { state.watchlistOpen = !state.watchlistOpen; state.searchOpen = false; render(); },
     updateSearchInput(v) { state.searchQuery = v; },
     searchKeydown(e) { if (e.key === 'Enter') MetalTape.runAiSearch(); },
@@ -170,7 +96,6 @@
     updateWatchlistInput(v) {
       state.watchlistInput = v;
       const sug = getWatchlistSuggestions();
-      // Selectively re-render only suggestions for typing speed
       const wrap = document.getElementById('suggestions-wrap');
       if (wrap) wrap.innerHTML = sug.length === 0 ? '' : `
         <div class="suggestions">
@@ -178,10 +103,8 @@
             <div class="suggestion-item" onclick="MetalTape.addBand('${escapeHtml(b)}')">
               <span style="font-size:15px;">${escapeHtml(b)}</span>
               <span class="suggestion-add">+ ADD</span>
-            </div>
-          `).join('')}
-        </div>
-      `;
+            </div>`).join('')}
+        </div>`;
       const addBtn = document.getElementById('add-band-btn');
       if (addBtn) addBtn.style.display = v.trim() ? '' : 'none';
     },
@@ -196,14 +119,10 @@
       state.watchlistInput = '';
       saveWatchlist(); render();
     },
-    removeBand(band) {
-      state.watchlist = state.watchlist.filter(b => b !== band);
-      saveWatchlist(); render();
-    },
+    removeBand(band) { state.watchlist = state.watchlist.filter(b => b !== band); saveWatchlist(); render(); },
     toggleWatch(band, e) {
       if (e) e.stopPropagation();
-      if (state.watchlist.includes(band)) MetalTape.removeBand(band);
-      else MetalTape.addBand(band);
+      state.watchlist.includes(band) ? MetalTape.removeBand(band) : MetalTape.addBand(band);
     },
     clearWatchlist() {
       if (confirm('Clear all watched bands?')) { state.watchlist = []; saveWatchlist(); render(); }
@@ -213,22 +132,15 @@
       if (e) e.stopPropagation();
       if (url && url !== '#') window.open(url, '_blank', 'noopener,noreferrer');
     },
+
     async runAiSearch() {
       if (!state.searchQuery.trim()) return;
+      if (!WORKER) { state.aiError = 'Worker URL not set in index.html'; render(); return; }
       state.aiLoading = true; state.aiError = null; state.aiResponse = null; state.matchedIds = null;
       render();
       const ctx = state.news.map(n => `ID:${n.id} | ${n.band} (${n.genre}, ${n.tier}) | ${n.cat} | ${n.headline}`).join('\n');
-      const prompt = `You are a metal music expert assistant for "The Metal Tape" news ticker.
-
-USER QUERY: "${state.searchQuery}"
-
-AVAILABLE NEWS STORIES:
-${ctx}
-
-Analyze the query and find matching stories. Respond ONLY with valid JSON:
-{"matchedIds":[array of story ID numbers],"response":"Brief 1-2 sentence answer in metal-appropriate tone"}`;
+      const prompt = `You are a metal music expert assistant for "The Metal Tape" news ticker.\n\nUSER QUERY: "${state.searchQuery}"\n\nAVAILABLE NEWS STORIES:\n${ctx}\n\nAnalyze the query and find matching stories. Respond ONLY with valid JSON:\n{"matchedIds":[array of story ID numbers],"response":"Brief 1-2 sentence answer in metal-appropriate tone"}`;
       try {
-        if (!WORKER) throw new Error('Worker URL not set');
         const res = await fetch(WORKER + '/api/brief', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -244,50 +156,74 @@ Analyze the query and find matching stories. Respond ONLY with valid JSON:
         state.aiResponse = parsed.response;
         state.matchedIds = parsed.matchedIds || [];
       } catch (err) {
-        state.aiError = err.message.includes('Worker URL') ? 'Worker not connected. Update window.MT.WORKER in index.html.' : 'Connection severed. Try again.';
+        state.aiError = 'Connection severed. Try again.';
+        console.error('AI search:', err);
       } finally {
         state.aiLoading = false; render();
       }
     },
+
     async runSummarize(itemId, e) {
       if (e) e.stopPropagation();
-      if (state.summaryFor === itemId) {
-        state.summaryFor = null; state.summaryText = null; render(); return;
+      if (state.summaryFor === itemId) { state.summaryFor = null; state.summaryText = null; render(); return; }
+      if (!WORKER) {
+        state.summaryFor = itemId; state.summaryText = '⛧ Worker not connected. Add ANTHROPIC_API_KEY to Worker env vars in Cloudflare dashboard.';
+        render(); return;
       }
       const item = state.news.find(n => n.id === itemId);
       if (!item) return;
       state.summaryFor = itemId; state.summaryLoading = true; state.summaryText = null;
       render();
-      const prompt = `Summarize this metal news in 2-3 sentences with direct, knowledgeable tone:
-Band: ${item.band}
-Genre: ${item.genre}
-Category: ${item.cat}
-Headline: ${item.headline}
-Source: ${item.source}
-Make it up plausibly based on metal context if needed. No preamble.`;
+      const prompt = `Summarize this metal news story in 2-3 sentences. Be direct and knowledgeable. No preamble.\n\nBand: ${item.band}\nGenre: ${item.genre}\nCategory: ${item.cat}\nHeadline: ${item.headline}\nSource: ${item.source}`;
       try {
-        if (!WORKER) throw new Error('Worker URL not set');
         const res = await fetch(WORKER + '/api/brief', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             messages: [{ role: 'user', content: prompt }],
-            system: 'You are a metal music expert. Be direct and knowledgeable.',
+            system: 'You are a metal music expert. Be direct and knowledgeable. 2-3 sentences max.',
           }),
         });
         if (!res.ok) throw new Error('API ' + res.status);
         const data = await res.json();
         state.summaryText = (data.content || []).map(c => c.text || '').join('\n').trim();
       } catch (err) {
-        state.summaryText = err.message.includes('Worker URL')
-          ? '⛧ Worker not connected. Update window.MT.WORKER in index.html.'
-          : '⛧ Could not reach the wire. Try again.';
+        state.summaryText = '⛧ Could not reach the wire. Try again.';
+        console.error('Summary:', err);
       } finally {
         state.summaryLoading = false; render();
       }
     },
   };
   window.MetalTape = MetalTape;
+
+  // ----------- LIVE FEED -----------
+  async function fetchLiveFeed() {
+    if (!WORKER) {
+      state.feedLoading = false;
+      state.feedError = 'Worker URL not set. Update window.MT.WORKER in index.html.';
+      render(); return;
+    }
+    try {
+      state.feedLoading = true;
+      render();
+      const res = await fetch(WORKER + '/api/feed');
+      if (!res.ok) throw new Error('Feed ' + res.status);
+      const data = await res.json();
+      if (data.stories && data.stories.length > 0) {
+        state.news = data.stories;
+        state.feedError = null;
+      } else {
+        state.feedError = 'Feed returned empty. Sources may be temporarily down.';
+      }
+    } catch (err) {
+      state.feedError = 'Could not reach the wire. Retrying in 30 min.';
+      console.error('Feed:', err);
+    } finally {
+      state.feedLoading = false;
+      render();
+    }
+  }
 
   // ----------- ICONS -----------
   const ICONS = {
@@ -310,7 +246,7 @@ Make it up plausibly based on metal context if needed. No preamble.`;
 
   // ----------- TEMPLATES -----------
   function tplBarbedWire() {
-    const id = 'wire-' + Math.random().toString(36).slice(2, 7);
+    const id = 'w' + Math.random().toString(36).slice(2,7);
     return `<div class="barbed-wire"><svg viewBox="0 0 800 24" preserveAspectRatio="none">
       <defs><pattern id="${id}" x="0" y="0" width="40" height="24" patternUnits="userSpaceOnUse">
         <line x1="0" y1="12" x2="40" y2="12" stroke="#3a0000" stroke-width="1.5"/>
@@ -324,8 +260,8 @@ Make it up plausibly based on metal context if needed. No preamble.`;
   }
 
   function tplBloodSplatter(side) {
-    if (side === 'left') return `<svg class="blood-splatter" style="top:0;left:0;" width="180" height="120" viewBox="0 0 180 120"><g fill="#8b0000" opacity="0.6"><circle cx="20" cy="15" r="8"/><circle cx="45" cy="8" r="4"/><circle cx="60" cy="25" r="3"/><circle cx="35" cy="35" r="5"/><circle cx="80" cy="18" r="2"/><circle cx="15" cy="50" r="3"/><circle cx="55" cy="55" r="6"/><circle cx="90" cy="40" r="2"/><ellipse cx="30" cy="20" rx="15" ry="3" transform="rotate(25 30 20)"/></g></svg>`;
-    return `<svg class="blood-splatter" style="top:0;right:0;" width="200" height="100" viewBox="0 0 200 100"><g fill="#8b0000" opacity="0.5"><circle cx="160" cy="20" r="6"/><circle cx="180" cy="10" r="3"/><circle cx="140" cy="35" r="4"/><circle cx="170" cy="45" r="2"/><circle cx="120" cy="25" r="2"/><circle cx="190" cy="60" r="5"/><ellipse cx="170" cy="30" rx="20" ry="2" transform="rotate(-15 170 30)"/></g></svg>`;
+    if (side === 'left') return `<svg class="blood-splatter" style="top:0;left:0;" width="180" height="120" viewBox="0 0 180 120"><g fill="#8b0000" opacity="0.6"><circle cx="20" cy="15" r="8"/><circle cx="45" cy="8" r="4"/><circle cx="60" cy="25" r="3"/><circle cx="35" cy="35" r="5"/><circle cx="80" cy="18" r="2"/><circle cx="15" cy="50" r="3"/><circle cx="55" cy="55" r="6"/><ellipse cx="30" cy="20" rx="15" ry="3" transform="rotate(25 30 20)"/></g></svg>`;
+    return `<svg class="blood-splatter" style="top:0;right:0;" width="200" height="100" viewBox="0 0 200 100"><g fill="#8b0000" opacity="0.5"><circle cx="160" cy="20" r="6"/><circle cx="180" cy="10" r="3"/><circle cx="140" cy="35" r="4"/><circle cx="170" cy="45" r="2"/><circle cx="190" cy="60" r="5"/><ellipse cx="170" cy="30" rx="20" ry="2" transform="rotate(-15 170 30)"/></g></svg>`;
   }
 
   function tplBloodDrip(x, delay) {
@@ -363,11 +299,17 @@ Make it up plausibly based on metal context if needed. No preamble.`;
   }
 
   function tplTicker() {
-    const items = [...TICKER_ITEMS, ...TICKER_ITEMS]
-      .map(i => `<span class="ticker-item">${escapeHtml(i)}<span class="ticker-cross">✛</span></span>`).join('');
+    // Build ticker from live headlines or fallback text
+    const items = state.news.length > 0
+      ? [...state.news.slice(0, 12), ...state.news.slice(0, 12)]
+      : ['LOADING THE WIRE', 'FETCHING FEEDS', 'STAND BY', 'LOADING THE WIRE', 'FETCHING FEEDS', 'STAND BY'];
+    const html = items.map(i => {
+      const label = typeof i === 'object' ? `${i.band} — ${i.headline.slice(0,40)}${i.headline.length>40?'...':''}` : i;
+      return `<span class="ticker-item">${escapeHtml(label)}<span class="ticker-cross">✛</span></span>`;
+    }).join('');
     return `<div class="ticker">
-      ${tplBloodDrip(15, 0)}${tplBloodDrip(42, 1.3)}${tplBloodDrip(68, 2.7)}${tplBloodDrip(88, 0.6)}
-      <div class="ticker-track">${items}</div>
+      ${tplBloodDrip(15,0)}${tplBloodDrip(42,1.3)}${tplBloodDrip(68,2.7)}${tplBloodDrip(88,0.6)}
+      <div class="ticker-track">${html}</div>
     </div>`;
   }
 
@@ -387,17 +329,23 @@ Make it up plausibly based on metal context if needed. No preamble.`;
         <div class="panel-input-wrap ${state.watchlistInput?'active-heart':''}">
           <span style="color:var(--text-muted);margin-right:8px;display:flex;">${ICONS.plus}</span>
           <input type="text" class="panel-input" id="wl-input"
-            placeholder="ADD BAND (e.g. WHITECHAPEL, INFERI, ARCHSPIRE...)"
+            placeholder="ADD BAND — TYPE TO SEARCH OR ENTER ANY NAME"
             value="${escapeHtml(state.watchlistInput)}"
             oninput="MetalTape.updateWatchlistInput(this.value)"
             onkeydown="MetalTape.watchlistKeydown(event)"/>
-          <button id="add-band-btn" class="panel-btn heart" style="display:${state.watchlistInput.trim()?'':'none'};" onclick="MetalTape.addBand(document.getElementById('wl-input').value)">ADD</button>
+          <button id="add-band-btn" class="panel-btn heart" style="display:${state.watchlistInput.trim()?'':'none'};"
+            onclick="MetalTape.addBand(document.getElementById('wl-input').value)">ADD</button>
         </div>
         <div id="suggestions-wrap">
           ${sug.length>0?`<div class="suggestions">${sug.map(b=>`<div class="suggestion-item" onclick="MetalTape.addBand('${escapeHtml(b)}')"><span style="font-size:15px;">${escapeHtml(b)}</span><span class="suggestion-add">+ ADD</span></div>`).join('')}</div>`:''}
         </div>
       </div>
-      ${state.watchlist.length===0?`<div class="watchlist-empty">⛧ NO BANDS ON THE WIRE — TYPE ABOVE OR CLICK ❤ ON ANY BAND IN THE FEED ⛧</div>`:`<div class="watchlist-tags">${state.watchlist.map(b=>`<div class="watchlist-tag">${escapeHtml(b)}<span class="watchlist-tag-remove" onclick="MetalTape.removeBand('${escapeHtml(b)}')">${ICONS.x}</span></div>`).join('')}${state.watchlist.length>1?`<button class="clear-all-btn" onclick="MetalTape.clearWatchlist()">CLEAR ALL</button>`:''}</div>`}
+      ${state.watchlist.length===0
+        ? `<div class="watchlist-empty">⛧ NO BANDS ON THE WIRE — TYPE ABOVE OR CLICK ❤ ON ANY ROW ⛧</div>`
+        : `<div class="watchlist-tags">
+            ${state.watchlist.map(b=>`<div class="watchlist-tag">${escapeHtml(b)}<span class="watchlist-tag-remove" onclick="MetalTape.removeBand('${escapeHtml(b)}')">${ICONS.x}</span></div>`).join('')}
+            ${state.watchlist.length>1?`<button class="clear-all-btn" onclick="MetalTape.clearWatchlist()">CLEAR ALL</button>`:''}
+           </div>`}
     </div>`;
   }
 
@@ -408,7 +356,7 @@ Make it up plausibly based on metal context if needed. No preamble.`;
         <div class="sparkle-icon" style="display:flex;color:var(--red);">${ICONS.sparkles}</div>
         <div class="panel-input-wrap ${state.searchQuery?'active':''}">
           <input type="text" class="panel-input" id="search-input"
-            placeholder='Ask anything... "tech death tours" · "underground slam" · "reunion announcements"'
+            placeholder='Ask anything... "deathcore tours" · "tech death releases" · "bands like Spiritbox"'
             value="${escapeHtml(state.searchQuery)}"
             oninput="MetalTape.updateSearchInput(this.value)"
             onkeydown="MetalTape.searchKeydown(event)" ${state.aiLoading?'disabled':''}/>
@@ -419,7 +367,10 @@ Make it up plausibly based on metal context if needed. No preamble.`;
         </button>
       </div>
       ${state.aiLoading?`<div class="ai-loading">⛧ SUMMONING THE WIRE ${tplDots()}</div>`:''}
-      ${state.aiResponse&&!state.aiLoading?`<div class="ai-response"><span class="ai-response-label">⛧ CLAUDE:</span>${escapeHtml(state.aiResponse)}${state.matchedIds&&state.matchedIds.length>0?`<span style="color:var(--red);margin-left:8px;font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:2px;">▸ ${state.matchedIds.length} MATCHED</span>`:''}</div>`:''}
+      ${state.aiResponse&&!state.aiLoading?`<div class="ai-response">
+        <span class="ai-response-label">⛧ CLAUDE:</span>${escapeHtml(state.aiResponse)}
+        ${state.matchedIds&&state.matchedIds.length>0?`<span style="color:var(--red);margin-left:8px;font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:2px;">▸ ${state.matchedIds.length} MATCHED</span>`:''}
+      </div>`:''}
       ${state.aiError?`<div class="ai-error">⛧ ${escapeHtml(state.aiError)}</div>`:''}
     </div>`;
   }
@@ -429,14 +380,14 @@ Make it up plausibly based on metal context if needed. No preamble.`;
     const genres = getAllGenres();
     return `<div class="filter-bar">
       <span class="filter-label">▸ TIER:</span>
-      ${tiers.map(t => `<button class="filter-btn ${state.tierFilter===t?'active':''} ${state.tierFilter===t&&t==='UNDERGROUND'?'tier-underground':''}" onclick="MetalTape.setTier('${t}')">${t==='UNDERGROUND'?'⛧ '+t:t}</button>`).join('')}
+      ${tiers.map(t=>`<button class="filter-btn ${state.tierFilter===t?'active':''} ${state.tierFilter===t&&t==='UNDERGROUND'?'tier-underground':''}" onclick="MetalTape.setTier('${t}')">${t==='UNDERGROUND'?'⛧ '+t:t}</button>`).join('')}
       <div class="filter-divider"></div>
       <span class="filter-label">▸ CAT:</span>
-      ${CATS.map(c => `<button class="filter-btn ${state.filter===c?'active':''}" onclick="MetalTape.setFilter('${c}')">${c}</button>`).join('')}
+      ${CATS.map(c=>`<button class="filter-btn ${state.filter===c?'active':''}" onclick="MetalTape.setFilter('${c}')">${c}</button>`).join('')}
     </div>
     <div class="filter-bar genre">
       <span class="filter-label">▸ GENRE:</span>
-      ${genres.map(g => `<button class="filter-btn small ${state.genreFilter===g?'active genre-active':''}" onclick="MetalTape.setGenre('${escapeHtml(g)}')">${escapeHtml(g.toUpperCase())}</button>`).join('')}
+      ${genres.map(g=>`<button class="filter-btn small ${state.genreFilter===g?'active genre-active':''}" onclick="MetalTape.setGenre('${escapeHtml(g)}')">${escapeHtml(g.toUpperCase())}</button>`).join('')}
       <div class="filter-spacer"></div>
       ${hasActiveFilters()?`<button class="clear-filters-btn" onclick="MetalTape.clearFilters()">✕ CLEAR FILTERS</button>`:''}
       <span class="filter-status ${hasActiveFilters()?'active':''}">[${getFilteredNews().length}/${state.news.length}]</span>
@@ -450,47 +401,64 @@ Make it up plausibly based on metal context if needed. No preamble.`;
     </div>`;
   }
 
-  function tplRow(item, idx) {
+  function tplRow(item) {
     const watched = state.watchlist.includes(item.band);
     const isExpanded = state.summaryFor === item.id;
+    const hasUrl = item.url && item.url !== '#';
     return `<div class="row ${watched?'watched':''}" onclick="MetalTape.openArticle('${escapeHtml(item.url)}')">
       <div class="status-cell">
         ${item.urgent?`<span class="status-hot"></span><span class="status-hot-text">HOT</span>`:`<span class="status-dash">━━</span>`}
       </div>
       <div class="cat-cell ${item.cat}">${catIcon(item.cat)}${item.cat}</div>
       <div class="band-cell">
-        <div class="band-name">${escapeHtml(item.band)}<span class="external-icon">${ICONS.external}</span></div>
-        <div class="genre-tag">${escapeHtml(item.genre)} ${item.tier==='underground'?'⛧':''}</div>
+        <div class="band-name">${escapeHtml(item.band)}${hasUrl?ICONS.external:''}</div>
+        <div class="genre-tag">${escapeHtml(item.genre||'')} ${item.tier==='underground'?'⛧':''}</div>
       </div>
       <div class="headline-cell">${escapeHtml(item.headline)}</div>
       <div class="source-cell">▸ ${escapeHtml(item.source)}</div>
-      <button class="row-action-btn ${watched?'watched':''}" onclick="MetalTape.toggleWatch('${escapeHtml(item.band)}', event)" title="${watched?'Unwatch':'Watch'} ${escapeHtml(item.band)}">
+      <button class="row-action-btn ${watched?'watched':''}" onclick="MetalTape.toggleWatch('${escapeHtml(item.band)}',event)">
         ${ICONS.heart(watched)} ${watched?'WATCHING':'WATCH'}
       </button>
-      <button class="row-action-btn ${isExpanded?'active':''}" onclick="MetalTape.runSummarize(${item.id}, event)">
+      <button class="row-action-btn ${isExpanded?'active':''}" onclick="MetalTape.runSummarize(${item.id},event)">
         ${ICONS.sparkles} ${isExpanded?'CLOSE':'TL;DR'}
       </button>
       <div class="time-cell">${escapeHtml(item.time)}</div>
     </div>
     ${isExpanded?`<div class="summary-box">
       <div class="summary-label">${ICONS.sparkles} ⛧ TL;DR FROM CLAUDE</div>
-      ${state.summaryLoading?`<div class="summary-loading">LOADING ${tplDots()}</div>`:`<div class="summary-text">${escapeHtml(state.summaryText||'')}</div>`}
+      ${state.summaryLoading
+        ? `<div class="summary-loading">LOADING ${tplDots()}</div>`
+        : `<div class="summary-text">${escapeHtml(state.summaryText||'')}</div>`}
     </div>`:''}`;
   }
 
   function tplFeed() {
+    // Loading state
+    if (state.feedLoading) {
+      return `<div class="empty-state">
+        ⛧ TAPPING THE WIRE ${tplDots()}
+        <div class="empty-state-sub">Pulling from 9 sources...</div>
+      </div>`;
+    }
+    // Error state
+    if (state.feedError && state.news.length === 0) {
+      return `<div class="empty-state">
+        ⛧ FEED ERROR ⛧
+        <div class="empty-state-sub">${escapeHtml(state.feedError)}</div>
+      </div>`;
+    }
     const filtered = getFilteredNews();
     if (filtered.length === 0) {
       return `<div class="empty-state">⛧ NO STORIES MATCH THE WIRE ⛧
-        <div class="empty-state-sub">${state.watchlistFilterMode?'Try removing the watchlist filter or adding more bands':hasActiveFilters()?'Try clearing some filters':''}</div>
+        <div class="empty-state-sub">${state.watchlistFilterMode?'Try removing watchlist filter or adding more bands':hasActiveFilters()?'Try clearing some filters':''}</div>
       </div>`;
     }
-    return filtered.map((item, idx) => tplRow(item, idx)).join('');
+    return filtered.map(item => tplRow(item)).join('');
   }
 
   function tplBottom() {
     return `<div class="bottom-bar">
-      <div>⛧ 9 SOURCES (5 MAINSTREAM + 4 UNDERGROUND) · ${state.news.length} STORIES · ${state.watchlist.length} WATCHED ⛧</div>
+      <div>⛧ 9 SOURCES · ${state.news.length} STORIES · ${state.watchlist.length} WATCHED ⛧</div>
       <div class="bottom-active">${ICONS.sparkles} CLAUDE ${WORKER?'STANDING BY':'NOT CONNECTED'}</div>
     </div>`;
   }
@@ -511,35 +479,19 @@ Make it up plausibly based on metal context if needed. No preamble.`;
       tplFeed() +
       tplBarbedWire() +
       tplBottom();
-    // Restore focus to inputs after re-render
-    if (state.searchOpen) { const i = document.getElementById('search-input'); if (i && document.activeElement?.id !== 'search-input') {} }
   }
 
   // ----------- INIT -----------
   function init() {
     render();
-    // Update clock every second without full re-render
+    // Clock ticks without full re-render
     setInterval(() => {
-      const clock = document.querySelector('.clock');
-      if (clock) clock.textContent = new Date().toTimeString().split(' ')[0];
+      const c = document.querySelector('.clock');
+      if (c) c.textContent = new Date().toTimeString().split(' ')[0];
     }, 1000);
-    // Fetch live feed if enabled
-    if (USE_LIVE_FEED && WORKER) {
-      fetchLiveFeed();
-      setInterval(fetchLiveFeed, 1000 * 60 * 30);
-    }
-  }
-
-  async function fetchLiveFeed() {
-    try {
-      const res = await fetch(WORKER + '/api/feed');
-      if (!res.ok) return;
-      const data = await res.json();
-      if (data.stories && data.stories.length > 0) {
-        state.news = data.stories;
-        render();
-      }
-    } catch (e) { console.error('Feed:', e); }
+    // Fetch live feed immediately, then every 30 min
+    fetchLiveFeed();
+    setInterval(fetchLiveFeed, 1000 * 60 * 30);
   }
 
   if (document.readyState === 'loading') {
@@ -547,4 +499,5 @@ Make it up plausibly based on metal context if needed. No preamble.`;
   } else {
     init();
   }
+
 })();
