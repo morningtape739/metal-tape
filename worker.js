@@ -1,11 +1,13 @@
 /* =========================================================================
    THE METAL TAPE — CLOUDFLARE WORKER
    Proxies Anthropic API + RSS feed aggregation.
-   Same pattern as Morning Tape worker.
-
-   ENV VARS NEEDED:
-   - ANTHROPIC_API_KEY (for /api/brief endpoint)
+   Deploy as a true Worker (not static assets).
+   
+   SETUP:
+   1. In Cloudflare Dashboard → Workers → metal-tape → Settings → Variables
+   2. Add: ANTHROPIC_API_KEY = (your key from platform.anthropic.com)
    ========================================================================= */
+
 export default {
   async fetch(request, env) {
     const corsHeaders = {
