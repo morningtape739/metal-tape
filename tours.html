@@ -38,14 +38,11 @@
       overflow-x: hidden;
     }
 
-    /* ── SCANLINE OVERLAY ── */
     body::before {
       content: '';
-      position: fixed;
-      top: 0; left: 0; right: 0; bottom: 0;
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
       background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.03) 2px, rgba(0,0,0,0.03) 4px);
-      pointer-events: none;
-      z-index: 9999;
+      pointer-events: none; z-index: 9999;
     }
 
     /* ── MASTHEAD ── */
@@ -53,12 +50,8 @@
       background: linear-gradient(180deg, #1a0000 0%, var(--bg) 100%);
       border-bottom: 1px solid var(--red-dim);
       padding: 16px 20px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      position: relative;
-      overflow: hidden;
-      gap: 12px;
+      display: flex; align-items: center; justify-content: space-between;
+      position: relative; overflow: visible; gap: 12px; flex-wrap: wrap;
     }
     .masthead-left { display: flex; align-items: center; gap: 14px; }
     .masthead-right { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: flex-end; }
@@ -68,73 +61,63 @@
     .tagline { font-size: 8px; letter-spacing: 3px; color: var(--text-dim); margin-top: 3px; }
 
     .nav-btn {
-      padding: 6px 12px;
-      font-family: var(--mono);
-      font-size: 9px;
-      letter-spacing: 2px;
-      text-transform: uppercase;
-      cursor: pointer;
-      border: 1px solid var(--border2);
-      background: transparent;
-      color: var(--text-muted);
-      text-decoration: none;
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      transition: all 0.15s;
+      padding: 6px 12px; font-family: var(--mono);
+      font-size: 9px; letter-spacing: 2px; text-transform: uppercase;
+      cursor: pointer; border: 1px solid var(--border2);
+      background: transparent; color: var(--text-muted);
+      text-decoration: none; display: inline-flex; align-items: center; gap: 6px; transition: all 0.15s;
     }
     .nav-btn:hover { border-color: var(--red-bright); color: var(--red-bright); }
-    .nav-btn.active { border-color: var(--red-bright); color: var(--text); background: var(--red-dim); }
 
-    .live-badge {
-      display: flex; align-items: center; gap: 5px;
-      font-size: 9px; letter-spacing: 3px; color: var(--text-muted);
-    }
+    .live-badge { display: flex; align-items: center; gap: 5px; font-size: 9px; letter-spacing: 3px; color: var(--text-muted); }
     .live-dot { color: var(--red-bright); animation: pulse 1.5s infinite; font-size: 8px; }
     @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
 
-    /* ── BTC BUTTON ── */
+    /* ── BTC BUTTON — fixed visibility ── */
     .btc-btn {
-      display: flex; align-items: center; justify-content: center;
-      width: 26px; height: 26px;
+      display: flex; align-items: center; gap: 6px;
+      padding: 6px 12px;
       background: transparent;
-      border: 1px solid #2a1500;
+      border: 1px solid var(--orange);
       color: var(--orange);
       cursor: pointer;
       font-family: var(--mono);
-      transition: all 0.15s;
-      padding: 0; flex-shrink: 0;
+      font-size: 9px; letter-spacing: 2px; text-transform: uppercase;
+      transition: all 0.15s; flex-shrink: 0;
+      animation: btcGlow 3s infinite;
     }
-    .btc-btn:hover, .btc-btn.active { background: var(--orange); color: #000; border-color: var(--orange); }
+    @keyframes btcGlow { 0%,100%{box-shadow:0 0 4px rgba(247,147,26,0.3)} 50%{box-shadow:0 0 10px rgba(247,147,26,0.7)} }
+    .btc-btn:hover, .btc-btn.active { background: var(--orange); color: #000; border-color: var(--orange); animation: none; }
+
     .btc-panel {
       position: absolute; top: calc(100% + 8px); right: 0;
-      width: 280px; background: #0e0e0e;
-      border: 1px solid #2a1500; padding: 14px;
-      z-index: 200; box-shadow: 0 4px 24px rgba(0,0,0,0.8);
+      width: 300px; background: #0e0e0e;
+      border: 1px solid #3a2000; padding: 16px;
+      z-index: 500; box-shadow: 0 4px 24px rgba(0,0,0,0.9);
     }
-    .btc-panel-label { font-size: 10px; letter-spacing: 2px; color: var(--orange); text-transform: uppercase; margin-bottom: 10px; }
+    .btc-panel-label { font-size: 12px; letter-spacing: 3px; color: var(--orange); text-transform: uppercase; margin-bottom: 4px; font-weight: 800; }
+    .btc-panel-sub { font-size: 8px; letter-spacing: 2px; color: var(--text-muted); margin-bottom: 12px; }
     .btc-address-wrap {
       font-size: 10px; color: #aaa; background: #1a1a1a;
       border: 1px solid var(--border2); padding: 10px;
       word-break: break-all; margin-bottom: 10px;
       letter-spacing: 0.5px; line-height: 1.5; user-select: all;
+      cursor: pointer; transition: border-color 0.15s;
     }
+    .btc-address-wrap:hover { border-color: var(--orange); color: var(--orange); }
     .btc-copy-btn {
       width: 100%; padding: 7px; background: transparent;
-      border: 1px solid #2a1500; color: var(--orange);
+      border: 1px solid #3a2000; color: var(--orange);
       font-family: var(--mono); font-size: 9px; letter-spacing: 2px;
       text-transform: uppercase; cursor: pointer; transition: all 0.15s;
     }
     .btc-copy-btn:hover { background: var(--orange); color: #000; border-color: var(--orange); }
     .btc-copy-btn.copied { background: #1a3a1a; border-color: #2a5a2a; color: #4caf50; }
+    .btc-hint { font-size: 8px; color: var(--text-dim); letter-spacing: 1px; margin-top: 8px; text-align: center; }
 
     /* ── BARBED WIRE ── */
     .barbed-wire { width: 100%; height: 24px; overflow: hidden; flex-shrink: 0; }
     .barbed-wire svg { width: 100%; height: 100%; }
-
-    /* ── BLOOD DRIPS ── */
-    @keyframes drip { 0%{stroke-dashoffset:60} 100%{stroke-dashoffset:0} }
-    @keyframes dripBall { 0%,70%{opacity:0} 80%{opacity:1} 100%{opacity:0} }
 
     /* ── TICKER ── */
     .ticker {
@@ -143,23 +126,15 @@
     }
     .ticker-track {
       display: flex; align-items: center; height: 100%;
-      animation: tickerScroll 60s linear infinite;
-      white-space: nowrap;
+      animation: tickerScroll 60s linear infinite; white-space: nowrap;
     }
     @keyframes tickerScroll { 0%{transform:translateX(0)} 100%{transform:translateX(-50%)} }
     .ticker-item { font-size: 9px; letter-spacing: 2px; color: #cc4444; padding: 0 24px; text-transform: uppercase; }
     .ticker-cross { color: var(--red); margin-left: 24px; }
 
     /* ── SEARCH BAR ── */
-    .search-section {
-      background: var(--bg2);
-      border-bottom: 1px solid var(--border);
-      padding: 14px 20px;
-    }
-    .search-row {
-      display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
-      margin-bottom: 10px;
-    }
+    .search-section { background: var(--bg2); border-bottom: 1px solid var(--border); padding: 14px 20px; }
+    .search-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 10px; }
     .search-input-wrap {
       flex: 1; min-width: 200px;
       display: flex; align-items: center;
@@ -173,7 +148,6 @@
       font-size: 11px; padding: 8px 0; outline: none;
     }
     .search-input::placeholder { color: var(--text-dim); }
-
     .search-btn {
       padding: 8px 16px; font-family: var(--mono);
       font-size: 9px; letter-spacing: 2px; text-transform: uppercase;
@@ -186,9 +160,7 @@
     .search-btn.loading { animation: blink 1s infinite; }
     @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.4} }
 
-    .location-row {
-      display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
-    }
+    .location-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
     .location-label { font-size: 9px; letter-spacing: 2px; color: var(--text-muted); text-transform: uppercase; }
     .location-input {
       background: #111; border: 1px solid var(--border2);
@@ -200,12 +172,10 @@
       padding: 4px 10px; font-family: var(--mono);
       font-size: 9px; letter-spacing: 1px;
       cursor: pointer; border: 1px solid var(--border2);
-      background: transparent; color: var(--text-muted);
-      transition: all 0.12s;
+      background: transparent; color: var(--text-muted); transition: all 0.12s;
     }
     .radius-btn.active { border-color: var(--red-bright); color: var(--text); background: var(--red-dim); }
     .radius-btn:hover:not(.active) { border-color: #333; color: var(--text-muted); }
-
     .watchlist-pill {
       padding: 4px 10px; font-family: var(--mono);
       font-size: 9px; letter-spacing: 1px;
@@ -220,8 +190,7 @@
     .status-bar {
       padding: 7px 20px; font-size: 9px; letter-spacing: 2px;
       color: var(--text-dim); border-bottom: 1px solid var(--border);
-      display: flex; justify-content: space-between; align-items: center;
-      flex-wrap: wrap; gap: 8px;
+      display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;
     }
     .status-bar.loading { color: var(--red); }
 
@@ -258,10 +227,7 @@
     .show-venue { font-size: 11px; color: var(--text-muted); }
     .show-location { font-size: 10px; color: var(--text-dim); }
     .show-tags { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 2px; }
-    .show-tag {
-      font-size: 7px; letter-spacing: 1px; text-transform: uppercase;
-      padding: 1px 5px; border: 1px solid var(--border2); color: var(--text-dim);
-    }
+    .show-tag { font-size: 7px; letter-spacing: 1px; text-transform: uppercase; padding: 1px 5px; border: 1px solid var(--border2); color: var(--text-dim); }
     .show-tag.watched-tag { border-color: var(--red-dim); color: #cc4444; }
 
     .show-actions {
@@ -286,20 +252,15 @@
     }
     .dice-btn:hover { border-color: #333; color: #888; }
 
-    /* ── EMPTY / ERROR STATES ── */
+    /* ── EMPTY / ERROR ── */
     .empty-state {
       text-align: center; padding: 60px 24px;
       font-size: 11px; letter-spacing: 3px;
-      color: var(--text-dim); text-transform: uppercase;
-      line-height: 2;
+      color: var(--text-dim); text-transform: uppercase; line-height: 2;
     }
     .empty-sub { font-size: 9px; color: var(--text-dim); margin-top: 10px; letter-spacing: 1px; text-transform: none; }
 
-    .loading-dot {
-      display: inline-block; width: 4px; height: 4px;
-      background: var(--red-bright); border-radius: 50%;
-      margin: 0 2px; animation: dotPulse 1.2s infinite;
-    }
+    .loading-dot { display: inline-block; width: 4px; height: 4px; background: var(--red-bright); border-radius: 50%; margin: 0 2px; animation: dotPulse 1.2s infinite; }
     .loading-dot:nth-child(2) { animation-delay: 0.2s; }
     .loading-dot:nth-child(3) { animation-delay: 0.4s; }
     @keyframes dotPulse { 0%,80%,100%{opacity:0.2} 40%{opacity:1} }
@@ -319,6 +280,7 @@
       .search-row { flex-direction: column; align-items: stretch; }
       .search-input-wrap { min-width: unset; }
       .location-row { flex-wrap: wrap; }
+      .btc-panel { width: 260px; right: -10px; }
     }
   </style>
 </head>
@@ -331,7 +293,6 @@
   const WORKER = (window.MT && window.MT.WORKER) || '';
   const WATCHLIST_KEY = 'metalTape_watchlist_v1';
   const BTC_ADDRESS = 'bc1qej3uqlv202lxyz7zph8du9mh25rzyqtxs8zsvj';
-  const BIT_APP_ID = 'metal_tape';
 
   const state = {
     bands: [],
@@ -366,7 +327,6 @@
       month: d.toLocaleString('default', { month: 'short' }).toUpperCase(),
       day: d.getDate(),
       year: d.getFullYear(),
-      full: d,
     };
   }
 
@@ -387,18 +347,11 @@
     return state.watchlist.some(b => u.includes(b) || b.includes(u));
   }
 
-  function filterByLocation(shows) {
-    if (state.radius === 'nationwide' || !state.location.trim()) return shows;
-    // Location filtering is handled server-side by Bandsintown
-    // Client-side we just return all since BIT already filtered by region
-    return shows;
-  }
-
-  // ── API CALLS ──
+  // ── API — routed through Worker to avoid CORS ──
   async function fetchBandShows(bandName) {
-    const url = `https://rest.bandsintown.com/artists/${encodeURIComponent(bandName)}/events?app_id=${BIT_APP_ID}&date=upcoming`;
+    if (!WORKER) return [];
     try {
-      const res = await fetch(url);
+      const res = await fetch(`${WORKER}/api/bandsintown?artist=${encodeURIComponent(bandName)}`);
       if (!res.ok) return [];
       const data = await res.json();
       if (!Array.isArray(data)) return [];
@@ -415,11 +368,9 @@
   async function runSearch() {
     const bandsToSearch = state.useWatchlist
       ? state.watchlist
-      : state.bands.length > 0
-        ? state.bands
-        : state.bandInput.trim()
-          ? [state.bandInput.trim()]
-          : [];
+      : state.bandInput.trim()
+        ? [state.bandInput.trim()]
+        : [];
 
     if (bandsToSearch.length === 0) {
       state.error = 'Enter a band name or enable watchlist mode.';
@@ -433,26 +384,20 @@
     render();
 
     try {
-      // Fetch all bands in parallel, max 30 at a time to be respectful
-      const chunks = [];
-      for (let i = 0; i < bandsToSearch.length; i += 30) {
-        chunks.push(bandsToSearch.slice(i, i + 30));
-      }
+      // Fetch all bands in parallel, chunked at 20 to be respectful
       let allShows = [];
-      for (const chunk of chunks) {
+      for (let i = 0; i < bandsToSearch.length; i += 20) {
+        const chunk = bandsToSearch.slice(i, i + 20);
         const results = await Promise.all(chunk.map(fetchBandShows));
         results.forEach(r => allShows = allShows.concat(r));
       }
 
-      // Filter by location if set
+      // Filter by location if set and not nationwide
       if (state.location.trim() && state.radius !== 'nationwide') {
-        const locLower = state.location.toLowerCase();
-        const radiusMiles = parseInt(state.radius);
+        const locLower = state.location.toLowerCase().trim();
         allShows = allShows.filter(s => {
           const city = (s.venue?.city || '').toLowerCase();
           const region = (s.venue?.region || '').toLowerCase();
-          const country = (s.venue?.country || '').toLowerCase();
-          // Simple string match for city/state
           return city.includes(locLower) || region.includes(locLower) ||
                  locLower.includes(city) || locLower.includes(region);
         });
@@ -504,16 +449,11 @@
   }
 
   function tplTicker() {
-    const phrases = ['TOUR DATES', 'LIVE SHOWS', 'ON THE ROAD', 'METAL TOUR WIRE', 'UPCOMING SHOWS', 'LIVE METAL', 'TOUR DATES', 'LIVE SHOWS', 'ON THE ROAD', 'METAL TOUR WIRE', 'UPCOMING SHOWS', 'LIVE METAL'];
-    return `<div class="ticker">
-      <div class="ticker-track">
-        ${phrases.map(p => `<span class="ticker-item">${p}<span class="ticker-cross">✛</span></span>`).join('')}
-      </div>
-    </div>`;
+    const phrases = ['TOUR DATES','LIVE SHOWS','ON THE ROAD','METAL TOUR WIRE','UPCOMING SHOWS','LIVE METAL','TOUR DATES','LIVE SHOWS','ON THE ROAD','METAL TOUR WIRE','UPCOMING SHOWS','LIVE METAL'];
+    return `<div class="ticker"><div class="ticker-track">${phrases.map(p=>`<span class="ticker-item">${p}<span class="ticker-cross">✛</span></span>`).join('')}</div></div>`;
   }
 
   function tplMasthead() {
-    const wl = state.watchlist.length;
     return `<div class="masthead">
       <div class="masthead-left">
         <div>
@@ -526,15 +466,16 @@
         <div class="live-badge"><span class="live-dot">●</span> LIVE</div>
         <div style="position:relative;">
           <button class="btc-btn ${state.btcOpen?'active':''}" onclick="Tour.toggleBtc(event)" title="Support with Bitcoin">
-            ${ICONS.btc}
+            ${ICONS.btc} BTC
           </button>
           ${state.btcOpen ? `<div class="btc-panel" onclick="event.stopPropagation()">
             <div class="btc-panel-label">⛧ Support The Wire ⛧</div>
-            <div class="btc-panel-label" style="font-size:9px;color:#555;margin-bottom:8px;">BITCOIN DONATION ADDRESS</div>
-            <div class="btc-address-wrap">${BTC_ADDRESS}</div>
+            <div class="btc-panel-sub">BITCOIN DONATION ADDRESS</div>
+            <div class="btc-address-wrap" onclick="Tour.copyBtc(event)">${BTC_ADDRESS}</div>
             <button class="btc-copy-btn ${state.btcCopied?'copied':''}" onclick="Tour.copyBtc(event)">
               ${state.btcCopied ? '✓ COPIED' : 'COPY ADDRESS'}
             </button>
+            <div class="btc-hint">${state.btcCopied ? '⛧ COPIED TO CLIPBOARD ⛧' : '⛧ TAP ADDRESS TO COPY ⛧'}</div>
           </div>` : ''}
         </div>
       </div>
@@ -553,9 +494,7 @@
             oninput="Tour.updateBandInput(this.value)"
             onkeydown="if(event.key==='Enter')Tour.runSearch()"/>
         </div>
-        <button class="search-btn ${state.loading?'loading':''}"
-          onclick="Tour.runSearch()"
-          ${state.loading?'disabled':''}>
+        <button class="search-btn ${state.loading?'loading':''}" onclick="Tour.runSearch()" ${state.loading?'disabled':''}>
           ${state.loading ? 'SEARCHING...' : '⛧ FIND SHOWS'}
         </button>
       </div>
@@ -565,7 +504,7 @@
           value="${escapeHtml(state.location)}"
           oninput="Tour.updateLocation(this.value)"/>
         <span class="location-label" style="margin-left:4px;">▸ RADIUS:</span>
-        ${RADII.map(r => `<button class="radius-btn ${state.radius===r?'active':''}" onclick="Tour.setRadius('${r}')">${r.toUpperCase()}</button>`).join('')}
+        ${RADII.map(r=>`<button class="radius-btn ${state.radius===r?'active':''}" onclick="Tour.setRadius('${r}')">${r.toUpperCase()}</button>`).join('')}
         ${wl > 0 ? `
         <button class="watchlist-pill ${state.useWatchlist?'active':''}" onclick="Tour.toggleWatchlist()">
           ${ICONS.heart} WATCHLIST [${wl}]${state.useWatchlist?' ✓':''}
@@ -590,7 +529,7 @@
         <div class="show-date-year">${dt.year||''}</div>
       </div>
       <div class="show-body">
-        <div class="show-artist">${escapeHtml(artist)}${show.lineup && show.lineup.length > 1 ? ' <span style="color:#555;font-weight:400;font-size:10px;">+ ' + escapeHtml(show.lineup.slice(1).join(', ')) + '</span>' : ''}</div>
+        <div class="show-artist">${escapeHtml(artist)}${show.lineup && show.lineup.length > 1 ? ' <span style="color:#555;font-weight:400;font-size:10px;">+ '+escapeHtml(show.lineup.slice(1).join(', '))+'</span>' : ''}</div>
         <div class="show-meta">
           <span class="show-venue">${escapeHtml(venue.name||'')}</span>
           <span class="show-location">${escapeHtml(locationStr)}</span>
@@ -626,7 +565,6 @@
     if (state.shows.length === 0) {
       return `<div class="empty-state">⛧ NO SHOWS FOUND ⛧<div class="empty-sub">Try a different band, remove the location filter, or check back later</div></div>`;
     }
-
     const grouped = groupByMonth(state.shows);
     return Object.entries(grouped).map(([month, shows]) => `
       <div class="month-header">── ${month} &nbsp; (${shows.length} show${shows.length!==1?'s':''})</div>
@@ -645,12 +583,11 @@
 
   function tplBottom() {
     return `<div class="bottom-bar">
-      <div>⛧ TOUR WIRE · BANDSINTOWN API · ${state.watchlist.length} BANDS WATCHED ⛧</div>
+      <div>⛧ TOUR WIRE · BANDSINTOWN · ${state.watchlist.length} BANDS WATCHED ⛧</div>
       <div style="color:#2a2a2a;">THE METAL TAPE</div>
     </div>`;
   }
 
-  // ── TOUR ACTIONS ──
   const Tour = {
     updateBandInput(v) { state.bandInput = v; },
     updateLocation(v) { state.location = v; },
@@ -692,10 +629,8 @@
       tplBottom();
   }
 
-  // Auto-load watchlist on open if watchlist has bands
   function init() {
     render();
-    // If user has a watchlist, pre-populate and auto-search
     if (state.watchlist.length > 0) {
       state.useWatchlist = true;
       render();
