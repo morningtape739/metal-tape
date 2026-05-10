@@ -70,6 +70,106 @@
       || state.watchlistFilterMode || state.matchedIds !== null;
   }
 
+  // ----------- BAND NAME POST-PROCESSING -----------
+  // After the feed loads, build a known-band index and re-scan headlines
+  // that got poor extractions (fallback 3-word dumps, quoted fragments, etc.)
+  // This is much more reliable than pure regex guessing in the worker.
+
+  // Known band list — expands automatically from clean extractions in the feed,
+  // plus a hardcoded seed list of bands common to these sources.
+  const KNOWN_BANDS_SEED = [
+    'WHITECHAPEL','LORNA SHORE','DESPISED ICON','CHELSEA GRIN','CARNIFEX','OCEANO',
+    'BRAND OF SACRIFICE','ANGELMAKER','ENTERPRISE EARTH','SHADOW OF INTENT',
+    'ARCHSPIRE','BEYOND CREATION','OBSCURA','INFERI','ALLEGAEON','WORMED','GORGUTS',
+    'DEVOURMENT','DISENTOMB','DEFEATED SANITY','KRAANIUM','INGESTED','CEREBRAL ROT',
+    'ABOMINABLE PUTRIDITY','KATALEPSY','VULVODYNIA','ACRANIUS','PATHOLOGY',
+    'TRIVIUM','ARCHITECTS','SPIRITBOX','WAGE WAR','CURRENTS','SILENT PLANET',
+    'POLARIS','AUGUST BURNS RED','BRING ME THE HORIZON',
+    'KNOCKED LOOSE','TURNSTILE','CODE ORANGE','CONVERGE','HATEBREED',
+    'MESHUGGAH','TOOL','PERIPHERY','ANIMALS AS LEADERS','BORN OF OSIRIS','ERRA',
+    'CANNIBAL CORPSE','MORBID ANGEL','OBITUARY','GOJIRA','GATECREEPER','NECROT',
+    'TOMB MOLD','BLOOD INCANTATION','NAPALM DEATH','CARCASS','PIG DESTROYER',
+    'NAILS','FULL OF HELL','MUNICIPAL WASTE','POWER TRIP',
+    'METALLICA','SLAYER','MEGADETH','ANTHRAX',
+    'ELECTRIC WIZARD','EYEHATEGOD','PALLBEARER',
+    'MAYHEM','DARKTHRONE','EMPEROR','MGLA',
+    'SLIPKNOT','SYSTEM OF A DOWN','PANTERA','LAMB OF GOD','MACHINE HEAD',
+    'DEVILDRIVER','REVOCATION','DYING FETUS','SUFFOCATION','CRYPTOPSY',
+    'ORIGIN','NILE','HATE ETERNAL','IMMOLATION','INCANTATION',
+    'MISERY INDEX','CATTLE DECAPITATION','THE BLACK DAHLIA MURDER',
+    'SHADOW OF INTENT','WHITECHAPEL','VEIL OF MAYA','AFTER THE BURIAL',
+    'PARKWAY DRIVE','KILLSWITCH ENGAGE','AS I LAY DYING','ALL THAT REMAINS',
+    'UNEARTH','SHADOWS FALL','TERROR','HATEBREED','EVERY TIME I DIE',
+    'SACRED REICH','TESTAMENT','EXODUS','OVERKILL','DEATH ANGEL',
+    'KREATOR','SODOM','DESTRUCTION','ACCEPT','PRIMAL FEAR',
+    'FROZEN SOUL','FROZEN SOUL','GATECREEPER','VITRIOL','UNDEATH',
+    'RED HOT CHILI PEPPERS','ZZ TOP','PAUL KOSSOFF','FREE',
+    'DIMMU BORGIR','CRADLE OF FILTH','BEHEMOTH','WATAIN',
+    'AMON AMARTH','ENSLAVED','PRIMORDIAL','MGLA',
+    'OPETH','MASTODON','BARONESS','NEUROSIS','ISIS',
+    'DOWN','SUPERJOINT','CROWBAR','ACID BATH',
+    'WWE NXT','KNOTFEST','SUMMER SLAUGHTER',
+  ];
+
+  function buildBandIndex(stories) {
+    // Combine seed + bands already cleanly extracted from current feed
+    const allBands = new Set(KNOWN_BANDS_SEED);
+    stories.forEach(s => {
+      if (s.band && s.band !== 'UNKNOWN' && s.band.split(' ').length <= 5) {
+        allBands.add(s.band.toUpperCase());
+      }
+    });
+    // Sort longest first so "BLACK DAHLIA MURDER" matches before "BLACK"
+    return Array.from(allBands).sort((a, b) => b.length - a.length);
+  }
+
+  function refineBandName(title, currentBand, bandIndex) {
+    if (!title) return currentBand;
+    const t = title.toUpperCase();
+
+    // If current extraction looks clean (has colon or dash separator), trust it
+    if (title.match(/^[^:]{2,40}:/) || title.match(/^[^—–]{2,40}[—–]/)) {
+      return currentBand;
+    }
+
+    // Scan the known band index against the full title
+    for (const band of bandIndex) {
+      if (band.length < 3) continue;
+      // Match at word boundary — band name must appear as whole words
+      const escaped = band.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const re = new RegExp('\\b' + escaped + '\\b', 'i');
+      if (re.test(t)) {
+        return band;
+      }
+    }
+
+    // If current band looks like a sentence fragment (ends with verb word or is quoted),
+    // fall back to first 2 words rather than 3
+    if (/^["']/.test(title) || currentBand.split(' ').length > 3) {
+      const words = title.replace(/^["'\s]+/, '').split(/\s+/).slice(0, 2).join(' ');
+      return words.toUpperCase();
+    }
+
+    return currentBand;
+  }
+
+  function postProcessFeed(stories) {
+    if (!stories || stories.length === 0) return stories;
+    const bandIndex = buildBandIndex(stories);
+    return stories.map(s => {
+      const refined = refineBandName(s.band + ' ' + s.headline, s.band, bandIndex);
+      if (refined !== s.band) {
+        // Rebuild headline to remove the refined band name from front if present
+        let newHeadline = s.headline;
+        if (newHeadline.toUpperCase().startsWith(refined)) {
+          newHeadline = newHeadline.slice(refined.length).replace(/^[\s:—–\-]+/, '').trim();
+        }
+        return { ...s, band: refined, headline: newHeadline || s.headline };
+      }
+      return s;
+    });
+  }
+
   // ----------- ACTIONS -----------
   const MetalTape = {
     setFilter(f) { state.filter = f; render(); },
@@ -121,15 +221,14 @@
     },
     removeBand(band) { state.watchlist = state.watchlist.filter(b => b !== band); saveWatchlist(); render(); },
     toggleWatch(band, e) {
-      if (e) e.stopPropagation();
+      if (e) { e.stopPropagation(); e.preventDefault(); }
       state.watchlist.includes(band) ? MetalTape.removeBand(band) : MetalTape.addBand(band);
     },
     clearWatchlist() {
       if (confirm('Clear all watched bands?')) { state.watchlist = []; saveWatchlist(); render(); }
     },
     toggleWatchlistFilter() { state.watchlistFilterMode = !state.watchlistFilterMode; render(); },
-    openArticle(url, e) {
-      if (e) e.stopPropagation();
+    openArticle(url) {
       if (url && url !== '#') window.open(url, '_blank', 'noopener,noreferrer');
     },
 
@@ -164,7 +263,7 @@
     },
 
     async runSummarize(itemId, e) {
-      if (e) e.stopPropagation();
+      if (e) { e.stopPropagation(); e.preventDefault(); }
       if (state.summaryFor === itemId) { state.summaryFor = null; state.summaryText = null; render(); return; }
       if (!WORKER) {
         state.summaryFor = itemId; state.summaryText = '⛧ Worker not connected. Add ANTHROPIC_API_KEY to Worker env vars in Cloudflare dashboard.';
@@ -211,7 +310,8 @@
       if (!res.ok) throw new Error('Feed ' + res.status);
       const data = await res.json();
       if (data.stories && data.stories.length > 0) {
-        state.news = data.stories;
+        // Post-process band names against known band index
+        state.news = postProcessFeed(data.stories);
         state.feedError = null;
       } else {
         state.feedError = 'Feed returned empty. Sources may be temporarily down.';
@@ -299,7 +399,6 @@
   }
 
   function tplTicker() {
-    // Build ticker from live headlines or fallback text
     const items = state.news.length > 0
       ? [...state.news.slice(0, 12), ...state.news.slice(0, 12)]
       : ['LOADING THE WIRE', 'FETCHING FEEDS', 'STAND BY', 'LOADING THE WIRE', 'FETCHING FEEDS', 'STAND BY'];
@@ -405,6 +504,8 @@
     const watched = state.watchlist.includes(item.band);
     const isExpanded = state.summaryFor === item.id;
     const hasUrl = item.url && item.url !== '#';
+    // Escape band name for use in inline onclick — replace single quotes
+    const bandEsc = escapeHtml(item.band).replace(/'/g, '&#39;');
     return `<div class="row ${watched?'watched':''}" onclick="MetalTape.openArticle('${escapeHtml(item.url)}')">
       <div class="status-cell">
         ${item.urgent?`<span class="status-hot"></span><span class="status-hot-text">HOT</span>`:`<span class="status-dash">━━</span>`}
@@ -416,12 +517,16 @@
       </div>
       <div class="headline-cell">${escapeHtml(item.headline)}</div>
       <div class="source-cell">▸ ${escapeHtml(item.source)}</div>
-      <button class="row-action-btn ${watched?'watched':''}" onclick="MetalTape.toggleWatch('${escapeHtml(item.band)}',event)">
-        ${ICONS.heart(watched)} ${watched?'WATCHING':'WATCH'}
-      </button>
-      <button class="row-action-btn tldr-btn ${isExpanded?'active':''}" onclick="MetalTape.runSummarize(${item.id},event)">
-        ${ICONS.sparkles} ${isExpanded?'✕':'TL;DR'}
-      </button>
+      <div class="row-btn-wrap" onclick="event.stopPropagation()">
+        <button class="row-action-btn ${watched?'watched':''}" ontouchend="event.preventDefault();MetalTape.toggleWatch('${bandEsc}',event);" onclick="MetalTape.toggleWatch('${bandEsc}',event)">
+          ${ICONS.heart(watched)} ${watched?'WATCHING':'WATCH'}
+        </button>
+      </div>
+      <div class="row-btn-wrap" onclick="event.stopPropagation()">
+        <button class="row-action-btn tldr-btn ${isExpanded?'active':''}" ontouchend="event.preventDefault();MetalTape.runSummarize(${item.id},event);" onclick="MetalTape.runSummarize(${item.id},event)">
+          ${ICONS.sparkles} ${isExpanded?'✕':'TL;DR'}
+        </button>
+      </div>
       <div class="time-cell">${escapeHtml(item.time)}</div>
     </div>
     ${isExpanded?`<div class="summary-box">
@@ -433,14 +538,12 @@
   }
 
   function tplFeed() {
-    // Loading state
     if (state.feedLoading) {
       return `<div class="empty-state">
         ⛧ TAPPING THE WIRE ${tplDots()}
-        <div class="empty-state-sub">Pulling from 9 sources...</div>
+        <div class="empty-state-sub">Pulling from 10 sources...</div>
       </div>`;
     }
-    // Error state
     if (state.feedError && state.news.length === 0) {
       return `<div class="empty-state">
         ⛧ FEED ERROR ⛧
@@ -458,7 +561,7 @@
 
   function tplBottom() {
     return `<div class="bottom-bar">
-      <div>⛧ 9 SOURCES · ${state.news.length} STORIES · ${state.watchlist.length} WATCHED ⛧</div>
+      <div>⛧ 10 SOURCES · ${state.news.length} STORIES · ${state.watchlist.length} WATCHED ⛧</div>
       <div class="bottom-active">${ICONS.sparkles} CLAUDE ${WORKER?'STANDING BY':'NOT CONNECTED'}</div>
     </div>`;
   }
@@ -484,12 +587,10 @@
   // ----------- INIT -----------
   function init() {
     render();
-    // Clock ticks without full re-render
     setInterval(() => {
       const c = document.querySelector('.clock');
       if (c) c.textContent = new Date().toTimeString().split(' ')[0];
     }, 1000);
-    // Fetch live feed immediately, then every 30 min
     fetchLiveFeed();
     setInterval(fetchLiveFeed, 1000 * 60 * 30);
   }
