@@ -533,7 +533,7 @@
     if (state.feedLoading) {
       return `<div class="empty-state">
         ⛧ TAPPING THE WIRE ${tplDots()}
-        <div class="empty-state-sub">Pulling from 10 sources...</div>
+        <div class="empty-state-sub">Pulling from 11 sources...</div>
       </div>`;
     }
     if (state.feedError && state.news.length === 0) {
@@ -553,7 +553,7 @@
 
   function tplBottom() {
     return `<div class="bottom-bar">
-      <div>⛧ 10 SOURCES · ${state.news.length} STORIES · ${state.watchlist.length} WATCHED ⛧</div>
+      <div>⛧ 11 SOURCES · ${state.news.length} STORIES · ${state.watchlist.length} WATCHED ⛧</div>
       <div class="bottom-active">${ICONS.sparkles} CLAUDE ${WORKER?'STANDING BY':'NOT CONNECTED'}</div>
     </div>`;
   }
