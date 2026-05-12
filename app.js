@@ -407,9 +407,6 @@
           <span style="display:flex;${wc>0?'animation:pulseHeart 2s infinite;':''}">${ICONS.heart(wc>0)}</span>
           WATCHLIST${wc>0?' ['+wc+']':''}
         </button>
-        <button class="toggle-btn tours-btn ${state.filter==='TOUR'?'active':''}" onclick="MetalTape.setFilter('TOUR')">
-          ${ICONS.road} TOUR WIRE
-        </button>
         <a href="tours.html" class="toggle-btn tickets-btn">
           ${ICONS.ticket} TICKETS
         </a>
@@ -519,8 +516,8 @@
 
   function tplColHeaders() {
     return `<div class="col-headers">
-      <div>▸ STAT</div><div>▸ CAT</div><div>▸ BAND</div><div>▸ HEADLINE</div>
-      <div>▸ SOURCE</div><div></div><div></div><div style="text-align:right;">TIME ◂</div>
+      <div>▸ STAT</div><div>▸ CAT</div><div>▸ BAND / HEADLINE</div>
+      <div></div><div></div><div style="text-align:right;">TIME ◂</div>
     </div>`;
   }
 
@@ -529,17 +526,20 @@
     const isExpanded = state.summaryFor === item.id;
     const hasUrl = item.url && item.url !== '#';
     const bandEsc = escapeHtml(item.band).replace(/'/g, '&#39;');
+    // Combined band/headline display — band first (bold), headline after (lighter)
+    // This way even when extraction is wonky, the full context is readable
+    const fullTitle = item.band && item.band !== 'UNKNOWN'
+      ? `<span class="band-strong">${escapeHtml(item.band)}</span> <span class="band-sep">—</span> ${escapeHtml(item.headline)}`
+      : escapeHtml(item.headline);
     return `<div class="row ${watched?'watched':''}" onclick="MetalTape.openArticle('${escapeHtml(item.url)}')">
       <div class="status-cell">
         ${item.urgent?`<span class="status-hot"></span><span class="status-hot-text">HOT</span>`:`<span class="status-dash">━━</span>`}
       </div>
       <div class="cat-cell ${item.cat}">${catIcon(item.cat)}${item.cat}</div>
-      <div class="band-cell">
-        <div class="band-name">${escapeHtml(item.band)}${hasUrl?ICONS.external:''}</div>
-        <div class="genre-tag">${escapeHtml(item.genre||'')} ${item.tier==='underground'?'⛧':''}</div>
+      <div class="band-headline-cell">
+        <div class="band-headline-text">${fullTitle}${hasUrl?ICONS.external:''}</div>
+        <div class="genre-tag">${escapeHtml(item.genre||'')} ${item.tier==='underground'?'⛧':''} · ▸ ${escapeHtml(item.source)}</div>
       </div>
-      <div class="headline-cell">${escapeHtml(item.headline)}</div>
-      <div class="source-cell">▸ ${escapeHtml(item.source)}</div>
       <div class="row-btn-wrap" onclick="event.stopPropagation()">
         <button class="row-action-btn ${watched?'watched':''}" ontouchend="event.preventDefault();MetalTape.toggleWatch('${bandEsc}',event);" onclick="MetalTape.toggleWatch('${bandEsc}',event)">
           ${ICONS.heart(watched)} ${watched?'WATCHING':'WATCH'}
