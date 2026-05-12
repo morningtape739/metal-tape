@@ -1,0 +1,686 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>THE METAL TAPE — TICKET WIRE</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700;800&family=Bebas+Neue&display=swap" rel="stylesheet"/>
+  <script>
+    window.MT = {
+      WORKER: 'https://metal-tape-api.themorningtape26.workers.dev',
+    };
+  </script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #080808;
+      --bg2: #0d0d0d;
+      --bg3: #111;
+      --red: #8b0000;
+      --red-bright: #c0392b;
+      --red-dim: #3a0000;
+      --purple: #cc00ff;
+      --orange: #f7931a;
+      --text: #e0d8d0;
+      --text-muted: #555;
+      --text-dim: #333;
+      --border: #1a1a1a;
+      --border2: #222;
+      --mono: 'JetBrains Mono', monospace;
+    }
+
+    html, body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--mono);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: '';
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.03) 2px, rgba(0,0,0,0.03) 4px);
+      pointer-events: none; z-index: 9999;
+    }
+
+    /* MASTHEAD */
+    .masthead {
+      background: linear-gradient(180deg, #1a0000 0%, var(--bg) 100%);
+      border-bottom: 1px solid var(--red-dim);
+      padding: 16px 20px;
+      display: flex; align-items: center; justify-content: space-between;
+      position: relative; overflow: visible; gap: 12px; flex-wrap: wrap;
+    }
+    .masthead-left { display: flex; align-items: center; gap: 14px; }
+    .masthead-right { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: flex-end; }
+
+    .logo { font-size: clamp(16px, 3vw, 22px); font-weight: 800; letter-spacing: 3px; text-transform: uppercase; color: var(--text); }
+    .logo span { color: var(--purple); }
+    .tagline { font-size: 8px; letter-spacing: 3px; color: var(--text-dim); margin-top: 3px; }
+
+    .nav-btn {
+      padding: 6px 12px; font-family: var(--mono);
+      font-size: 9px; letter-spacing: 2px; text-transform: uppercase;
+      cursor: pointer; border: 1px solid var(--border2);
+      background: transparent; color: var(--text-muted);
+      text-decoration: none; display: inline-flex; align-items: center; gap: 6px; transition: all 0.15s;
+    }
+    .nav-btn:hover { border-color: var(--purple); color: var(--purple); }
+
+    .live-badge { display: flex; align-items: center; gap: 5px; font-size: 9px; letter-spacing: 3px; color: var(--text-muted); }
+    .live-dot { color: var(--purple); animation: pulse 1.5s infinite; font-size: 8px; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+    /* BTC BUTTON */
+    .btc-btn {
+      display: flex; align-items: center; gap: 6px;
+      padding: 6px 12px;
+      background: transparent;
+      border: 1px solid var(--orange);
+      color: var(--orange);
+      cursor: pointer;
+      font-family: var(--mono);
+      font-size: 9px; letter-spacing: 2px; text-transform: uppercase;
+      transition: all 0.15s; flex-shrink: 0;
+      animation: btcGlow 3s infinite;
+    }
+    @keyframes btcGlow { 0%,100%{box-shadow:0 0 4px rgba(247,147,26,0.3)} 50%{box-shadow:0 0 10px rgba(247,147,26,0.7)} }
+    .btc-btn:hover, .btc-btn.active { background: var(--orange); color: #000; border-color: var(--orange); animation: none; }
+
+    .btc-panel {
+      position: absolute; top: calc(100% + 8px); right: 0;
+      width: 300px; background: #0e0e0e;
+      border: 1px solid #3a2000; padding: 16px;
+      z-index: 500; box-shadow: 0 4px 24px rgba(0,0,0,0.9);
+    }
+    .btc-panel-label { font-size: 12px; letter-spacing: 3px; color: var(--orange); text-transform: uppercase; margin-bottom: 4px; font-weight: 800; }
+    .btc-panel-sub { font-size: 8px; letter-spacing: 2px; color: var(--text-muted); margin-bottom: 12px; }
+    .btc-address-wrap {
+      font-size: 10px; color: #aaa; background: #1a1a1a;
+      border: 1px solid var(--border2); padding: 10px;
+      word-break: break-all; margin-bottom: 10px;
+      letter-spacing: 0.5px; line-height: 1.5; user-select: all;
+      cursor: pointer; transition: border-color 0.15s;
+    }
+    .btc-address-wrap:hover { border-color: var(--orange); color: var(--orange); }
+    .btc-copy-btn {
+      width: 100%; padding: 7px; background: transparent;
+      border: 1px solid #3a2000; color: var(--orange);
+      font-family: var(--mono); font-size: 9px; letter-spacing: 2px;
+      text-transform: uppercase; cursor: pointer; transition: all 0.15s;
+    }
+    .btc-copy-btn:hover { background: var(--orange); color: #000; border-color: var(--orange); }
+    .btc-copy-btn.copied { background: #1a3a1a; border-color: #2a5a2a; color: #4caf50; }
+    .btc-hint { font-size: 8px; color: var(--text-dim); letter-spacing: 1px; margin-top: 8px; text-align: center; }
+
+    /* BARBED WIRE */
+    .barbed-wire { width: 100%; height: 24px; overflow: hidden; flex-shrink: 0; }
+    .barbed-wire svg { width: 100%; height: 100%; }
+
+    /* TICKER */
+    .ticker {
+      background: linear-gradient(90deg, #2a0040, var(--purple), #2a0040);
+      border-top: 3px solid var(--bg); border-bottom: 3px solid var(--bg);
+      height: 36px; overflow: hidden; position: relative;
+    }
+    .ticker-track {
+      display: flex; align-items: center; height: 100%;
+      animation: tickerScroll 60s linear infinite; white-space: nowrap;
+    }
+    @keyframes tickerScroll { 0%{transform:translateX(0)} 100%{transform:translateX(-50%)} }
+    .ticker-item { font-family:'Bebas Neue',sans-serif; font-size: 16px; letter-spacing: 4px; color: #000; padding: 0 24px; font-weight:700; }
+    .ticker-cross { color: #1a0033; margin-left: 24px; font-size: 18px; }
+
+    /* SEARCH SECTION */
+    .search-section { background: var(--bg2); border-bottom: 1px solid var(--border); padding: 16px 20px; }
+    .search-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
+    .search-input-wrap {
+      flex: 1; min-width: 200px;
+      display: flex; align-items: center;
+      border: 1px solid var(--border2); background: #111;
+      padding: 0 12px; gap: 8px;
+    }
+    .search-input-wrap:focus-within { border-color: var(--purple); }
+    .search-input {
+      flex: 1; background: transparent; border: none;
+      color: var(--text); font-family: var(--mono);
+      font-size: 11px; padding: 10px 0; outline: none;
+    }
+    .search-input::placeholder { color: var(--text-dim); }
+    .search-btn {
+      padding: 10px 18px; font-family:'Bebas Neue',sans-serif;
+      font-size: 13px; letter-spacing: 3px; text-transform: uppercase;
+      cursor: pointer; border: 1px solid var(--purple);
+      background: transparent; color: var(--purple);
+      transition: all 0.15s; white-space: nowrap; font-weight:700;
+    }
+    .search-btn:hover:not(:disabled) { background: var(--purple); color: #000; box-shadow:0 0 12px rgba(204,0,255,0.6); }
+    .search-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .search-btn.loading { animation: blink 1s infinite; }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+    .filter-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .filter-label { font-size: 9px; letter-spacing: 2px; color: var(--text-muted); text-transform: uppercase; }
+    .filter-input {
+      background: #111; border: 1px solid var(--border2);
+      color: var(--text); font-family: var(--mono); font-size: 11px;
+      padding: 6px 10px; outline: none; width: 110px;
+    }
+    .filter-input:focus { border-color: var(--purple); }
+    .radius-btn {
+      padding: 4px 10px; font-family: var(--mono);
+      font-size: 9px; letter-spacing: 1px;
+      cursor: pointer; border: 1px solid var(--border2);
+      background: transparent; color: var(--text-muted); transition: all 0.12s;
+    }
+    .radius-btn.active { border-color: var(--purple); color: var(--text); background: #2a0040; }
+    .radius-btn:hover:not(.active) { border-color: #333; color: var(--text-muted); }
+    .watchlist-pill {
+      padding: 4px 10px; font-family: var(--mono);
+      font-size: 9px; letter-spacing: 1px;
+      cursor: pointer; border: 1px solid var(--border2);
+      background: transparent; color: var(--text-muted);
+      transition: all 0.12s; display: flex; align-items: center; gap: 5px;
+    }
+    .watchlist-pill.active { border-color: var(--red-bright); color: var(--text); background: #2a0000; }
+
+    /* STATUS BAR */
+    .status-bar {
+      padding: 8px 20px; font-size: 9px; letter-spacing: 2px;
+      color: var(--text-dim); border-bottom: 1px solid var(--border);
+      display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;
+    }
+    .status-bar.loading { color: var(--purple); }
+
+    /* MONTH HEADER */
+    .month-header {
+      padding: 10px 20px; font-size: 10px; letter-spacing: 4px;
+      color: var(--purple); text-transform: uppercase;
+      border-bottom: 1px solid var(--border);
+      background: #0c0c0c; font-weight: 700;
+    }
+
+    /* SHOW ROW */
+    .show-row {
+      display: flex; align-items: stretch;
+      border-bottom: 1px solid var(--border);
+      transition: background 0.1s; cursor: pointer;
+    }
+    .show-row:hover { background: #0e0e0e; }
+    .show-row.watched { background: rgba(139,0,0,0.06); border-left: 2px solid var(--red-bright); }
+    .show-row.hot { background: rgba(204,0,255,0.04); }
+
+    .show-date {
+      min-width: 70px; padding: 14px 10px;
+      border-right: 1px solid var(--border);
+      display: flex; flex-direction: column;
+      justify-content: center; align-items: center; text-align: center; flex-shrink: 0;
+    }
+    .show-date-month { font-size: 8px; color: var(--text-dim); letter-spacing: 2px; text-transform: uppercase; }
+    .show-date-day { font-size: 22px; font-weight: 800; color: var(--purple); line-height: 1.1; font-family:'Bebas Neue',sans-serif; }
+    .show-date-year { font-size: 8px; color: var(--text-dim); letter-spacing: 1px; }
+    .show-date-time { font-size: 8px; color: var(--text-muted); letter-spacing: 1px; margin-top: 2px; }
+
+    .show-body { flex: 1; padding: 12px 16px; display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+    .show-name { font-family:'Bebas Neue',sans-serif; font-size: clamp(14px, 2vw, 18px); font-weight: 700; color: var(--text); line-height: 1.2; letter-spacing: 1px; }
+    .show-meta { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .show-venue { font-size: 11px; color: var(--text-muted); }
+    .show-location { font-size: 10px; color: var(--text-dim); }
+    .show-tags { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 4px; }
+    .show-tag { font-size: 8px; letter-spacing: 1px; text-transform: uppercase; padding: 2px 6px; border: 1px solid var(--border2); color: var(--text-dim); font-weight:700; }
+    .show-tag.watched-tag { border-color: var(--red-dim); color: var(--red-bright); }
+    .show-tag.price-tag { border-color: #1a3a1a; color: #4caf50; }
+    .show-tag.sold-out { border-color: #3a0000; color: var(--red-bright); }
+
+    .show-actions {
+      display: flex; flex-direction: column;
+      align-items: flex-end; justify-content: center;
+      padding: 10px 14px; gap: 6px; flex-shrink: 0;
+    }
+    .ticket-btn {
+      padding: 8px 14px; background: transparent;
+      border: 1px solid var(--purple); color: var(--purple);
+      font-family:'Bebas Neue',sans-serif; font-size: 11px; letter-spacing: 3px;
+      text-transform: uppercase; text-decoration: none; font-weight: 700;
+      transition: all 0.12s; white-space: nowrap; display: block; cursor: pointer;
+    }
+    .ticket-btn:hover { background: var(--purple); color: #000; box-shadow:0 0 8px rgba(204,0,255,0.6); }
+
+    /* EMPTY / ERROR */
+    .empty-state {
+      text-align: center; padding: 60px 24px;
+      font-size: 11px; letter-spacing: 3px;
+      color: var(--text-dim); text-transform: uppercase; line-height: 2;
+    }
+    .empty-sub { font-size: 9px; color: var(--text-dim); margin-top: 10px; letter-spacing: 1px; text-transform: none; }
+
+    .loading-dot { display: inline-block; width: 4px; height: 4px; background: var(--purple); border-radius: 50%; margin: 0 2px; animation: dotPulse 1.2s infinite; }
+    .loading-dot:nth-child(2) { animation-delay: 0.2s; }
+    .loading-dot:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes dotPulse { 0%,80%,100%{opacity:0.2} 40%{opacity:1} }
+
+    /* BOTTOM */
+    .bottom-bar {
+      padding: 12px 20px; font-size: 9px; letter-spacing: 2px;
+      color: var(--text-dim); border-top: 1px solid var(--border);
+      display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px;
+      background: var(--bg2);
+    }
+    .powered-by { color: var(--text-muted); font-size: 8px; letter-spacing: 1px; }
+    .powered-by a { color: var(--purple); text-decoration: none; }
+
+    /* MOBILE */
+    @media (max-width: 600px) {
+      .show-row { flex-wrap: wrap; }
+      .show-actions { flex-direction: row; padding: 8px 12px; width: 100%; justify-content: flex-start; border-top: 1px solid var(--border); }
+      .ticket-btn { width: 100%; text-align: center; }
+      .search-row { flex-direction: column; align-items: stretch; }
+      .search-input-wrap { min-width: unset; }
+      .filter-row { flex-wrap: wrap; }
+      .filter-input { width: 100px; }
+      .btc-panel { width: 260px; right: -10px; }
+    }
+  </style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+(function() {
+  'use strict';
+
+  const WORKER = (window.MT && window.MT.WORKER) || '';
+  const WATCHLIST_KEY = 'metalTape_watchlist_v1';
+  const BTC_ADDRESS = 'bc1qej3uqlv202lxyz7zph8du9mh25rzyqtxs8zsvj';
+
+  const state = {
+    bandInput: '',
+    location: '',           // single smart field — accepts city or zip
+    radius: '50',           // default to 50mi for better metro coverage
+    useWatchlist: false,
+    watchlist: loadWatchlist(),
+    events: [],
+    loading: false,
+    error: null,
+    btcOpen: false,
+    btcCopied: false,
+    searched: false,
+  };
+
+  const RADII = ['25', '50', '100', '250'];
+
+  function loadWatchlist() {
+    try { const s = localStorage.getItem(WATCHLIST_KEY); return s ? JSON.parse(s) : []; } catch(e) { return []; }
+  }
+
+  function escapeHtml(s) {
+    if (!s) return '';
+    return String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+  }
+
+  function formatDate(dtStr) {
+    const d = new Date(dtStr);
+    if (isNaN(d)) return { month: '??', day: '??', year: '????', time: '' };
+    const hours = d.getHours(), mins = d.getMinutes();
+    let time = '';
+    if (hours || mins) {
+      const h12 = hours % 12 || 12;
+      const ampm = hours >= 12 ? 'PM' : 'AM';
+      time = `${h12}:${String(mins).padStart(2,'0')}${ampm}`;
+    }
+    return {
+      month: d.toLocaleString('default', { month: 'short' }).toUpperCase(),
+      day: d.getDate(),
+      year: d.getFullYear(),
+      time,
+    };
+  }
+
+  function groupByMonth(events) {
+    const groups = {};
+    events.forEach(e => {
+      const d = new Date(e.datetime);
+      const key = isNaN(d) ? 'TBD' : d.toLocaleString('default', { month: 'long', year: 'numeric' }).toUpperCase();
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(e);
+    });
+    return groups;
+  }
+
+  function isWatchedEvent(event) {
+    if (state.watchlist.length === 0) return false;
+    const lineup = (event.lineup || []).join(' ').toUpperCase();
+    const name = (event.name || '').toUpperCase();
+    return state.watchlist.some(b => lineup.includes(b) || name.includes(b));
+  }
+
+  // Title-case for Ticketmaster searches
+  function toSearchCase(s) {
+    return s.toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
+  }
+
+  // ── API CALLS ──
+  async function fetchEvents(keyword) {
+    if (!WORKER) return [];
+    const params = new URLSearchParams({ keyword, size: '50' });
+
+    // Detect whether location input is a US zip (5 digits) or a city name
+    const loc = state.location.trim();
+    if (loc) {
+      const isZip = /^\d{5}$/.test(loc);
+      if (isZip) {
+        params.set('postalCode', loc);
+        params.set('radius', state.radius);
+      } else {
+        params.set('city', loc);
+      }
+    }
+
+    try {
+      const res = await fetch(`${WORKER}/api/tickets?${params.toString()}`);
+      if (!res.ok) return [];
+      const data = await res.json();
+      return data.events || [];
+    } catch(e) {
+      console.error('Fetch failed:', e);
+      return [];
+    }
+  }
+
+  async function runSearch() {
+    const searchTerms = state.useWatchlist
+      ? state.watchlist.map(toSearchCase)
+      : state.bandInput.trim()
+        ? [toSearchCase(state.bandInput.trim())]
+        : [];
+
+    if (searchTerms.length === 0) {
+      state.error = 'Enter a band name or enable watchlist mode.';
+      render(); return;
+    }
+
+    state.loading = true;
+    state.error = null;
+    state.events = [];
+    state.searched = true;
+    render();
+
+    try {
+      let allEvents = [];
+      // Search in chunks to avoid rate limits
+      for (let i = 0; i < searchTerms.length; i += 5) {
+        const chunk = searchTerms.slice(i, i + 5);
+        const results = await Promise.all(chunk.map(fetchEvents));
+        results.forEach(r => allEvents = allEvents.concat(r));
+      }
+
+      // Dedupe by event ID
+      const seen = new Set();
+      allEvents = allEvents.filter(e => {
+        if (seen.has(e.id)) return false;
+        seen.add(e.id); return true;
+      });
+
+      // Sort by date
+      allEvents.sort((a, b) => new Date(a.datetime) - new Date(b.datetime));
+
+      state.events = allEvents;
+      if (allEvents.length === 0) {
+        state.error = null;
+      }
+    } catch(err) {
+      state.error = 'Wire severed. Try again.';
+      console.error(err);
+    } finally {
+      state.loading = false;
+      render();
+    }
+  }
+
+  // ── ICONS ──
+  const ICONS = {
+    btc: `<svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M23.638 14.904c-1.602 6.43-8.113 10.34-14.542 8.736C2.67 22.05-1.244 15.525.362 9.105 1.962 2.67 8.475-1.243 14.9.358c6.43 1.605 10.342 8.115 8.738 14.546zM15.73 7.364c-.93-.36-1.944-.594-2.954-.713l.53-2.11-1.295-.324-.516 2.054a42.4 42.4 0 0 0-1.036-.248l.52-2.07-1.294-.323-.53 2.108c-.285-.065-.566-.13-.838-.198l.002-.007-1.786-.446-.344 1.384s.956.218.936.232c.522.13.617.476.601.75l-.602 2.41c.036.01.082.023.133.044l-.135-.034-.844 3.376c-.064.158-.226.396-.59.306.013.018-.936-.234-.936-.234l-.64 1.483 1.686.42c.314.08.62.162.923.24l-.536 2.15 1.293.322.53-2.112c.347.094.683.181 1.012.263l-.528 2.1 1.294.324.536-2.144c2.21.418 3.873.25 4.573-1.75.563-1.607-.028-2.534-1.19-3.138.847-.196 1.485-.754 1.655-1.907zm-2.963 4.153c-.4 1.607-3.107.738-3.984.52l.71-2.847c.878.22 3.694.654 3.274 2.327zm.401-4.176c-.365 1.463-2.62.72-3.352.538l.644-2.579c.732.183 3.088.523 2.708 2.04z"/></svg>`,
+    search: `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>`,
+    heart: `<svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>`,
+  };
+
+  function tplDots() {
+    return '<span><span class="loading-dot"></span><span class="loading-dot"></span><span class="loading-dot"></span></span>';
+  }
+
+  function tplBarbedWire() {
+    const id = 'w' + Math.random().toString(36).slice(2,7);
+    return `<div class="barbed-wire"><svg viewBox="0 0 800 24" preserveAspectRatio="none">
+      <defs><pattern id="${id}" x="0" y="0" width="40" height="24" patternUnits="userSpaceOnUse">
+        <line x1="0" y1="12" x2="40" y2="12" stroke="#3a0000" stroke-width="1.5"/>
+        <line x1="20" y1="4" x2="14" y2="20" stroke="#3a0000" stroke-width="1.5"/>
+        <line x1="20" y1="4" x2="26" y2="20" stroke="#3a0000" stroke-width="1.5"/>
+        <line x1="14" y1="4" x2="20" y2="20" stroke="#3a0000" stroke-width="1.5"/>
+        <line x1="26" y1="4" x2="20" y2="20" stroke="#3a0000" stroke-width="1.5"/>
+      </pattern></defs>
+      <rect width="800" height="24" fill="url(#${id})"/>
+    </svg></div>`;
+  }
+
+  function tplTicker() {
+    const phrases = ['⛧ TICKET WIRE ⛧','LIVE METAL SHOWS','BUY TICKETS','UPCOMING DATES','POWERED BY TICKETMASTER','⛧ TICKET WIRE ⛧','LIVE METAL SHOWS','BUY TICKETS','UPCOMING DATES','POWERED BY TICKETMASTER'];
+    return `<div class="ticker"><div class="ticker-track">${phrases.map(p=>`<span class="ticker-item">${p}<span class="ticker-cross">✛</span></span>`).join('')}</div></div>`;
+  }
+
+  function tplMasthead() {
+    return `<div class="masthead">
+      <div class="masthead-left">
+        <div>
+          <div class="logo">The Metal Tape <span>// TICKETS</span></div>
+          <div class="tagline">⛧ LIVE SHOWS ⛧ POWERED BY TICKETMASTER ⛧</div>
+        </div>
+      </div>
+      <div class="masthead-right">
+        <a href="index.html" class="nav-btn">◂ NEWS FEED</a>
+        <div class="live-badge"><span class="live-dot">●</span> LIVE</div>
+        <div style="position:relative;">
+          <button class="btc-btn ${state.btcOpen?'active':''}" onclick="Tickets.toggleBtc(event)" title="Support with Bitcoin">
+            ${ICONS.btc} BTC
+          </button>
+          ${state.btcOpen ? `<div class="btc-panel" onclick="event.stopPropagation()">
+            <div class="btc-panel-label">⛧ Support The Wire ⛧</div>
+            <div class="btc-panel-sub">BITCOIN DONATION ADDRESS</div>
+            <div class="btc-address-wrap" onclick="Tickets.copyBtc(event)">${BTC_ADDRESS}</div>
+            <button class="btc-copy-btn ${state.btcCopied?'copied':''}" onclick="Tickets.copyBtc(event)">
+              ${state.btcCopied ? '✓ COPIED' : 'COPY ADDRESS'}
+            </button>
+            <div class="btc-hint">${state.btcCopied ? '⛧ COPIED TO CLIPBOARD ⛧' : '⛧ TAP ADDRESS TO COPY ⛧'}</div>
+          </div>` : ''}
+        </div>
+      </div>
+    </div>`;
+  }
+
+  function tplSearch() {
+    const wl = state.watchlist.length;
+    const isZip = /^\d{5}$/.test(state.location.trim());
+    return `<div class="search-section">
+      <div class="search-row">
+        <div class="search-input-wrap">
+          ${ICONS.search}
+          <input class="search-input" id="band-input" type="text"
+            placeholder="BAND, FESTIVAL, OR KEYWORD — e.g. Whitechapel, Hellfest, Trivium"
+            value="${escapeHtml(state.bandInput)}"
+            oninput="Tickets.updateBandInput(this.value)"
+            onkeydown="if(event.key==='Enter')Tickets.runSearch()"/>
+        </div>
+        <button class="search-btn ${state.loading?'loading':''}" onclick="Tickets.runSearch()" ${state.loading?'disabled':''}>
+          ${state.loading ? 'SEARCHING...' : '⛧ FIND TICKETS'}
+        </button>
+      </div>
+      <div class="filter-row">
+        <span class="filter-label">▸ LOCATION:</span>
+        <input class="filter-input" type="text" placeholder="ZIP or city (optional)" style="width:180px;"
+          value="${escapeHtml(state.location)}"
+          oninput="Tickets.updateLocation(this.value)"/>
+        ${isZip ? `
+          <span class="filter-label">▸ RADIUS:</span>
+          ${RADII.map(r=>`<button class="radius-btn ${state.radius===r?'active':''}" onclick="Tickets.setRadius('${r}')">${r}MI</button>`).join('')}
+        ` : ''}
+        ${wl > 0 ? `
+        <button class="watchlist-pill ${state.useWatchlist?'active':''}" onclick="Tickets.toggleWatchlist()">
+          ${ICONS.heart} WATCHLIST [${wl}]${state.useWatchlist?' ✓':''}
+        </button>` : ''}
+      </div>
+    </div>`;
+  }
+
+  function tplShowRow(event) {
+    const dt = formatDate(event.datetime);
+    const venue = event.venue || {};
+    const isWatched = isWatchedEvent(event);
+    const ticketUrl = event.url;
+    const locationStr = [venue.city, venue.state].filter(Boolean).join(', ');
+    const priceStr = event.priceMin
+      ? (event.priceMax && event.priceMax !== event.priceMin
+          ? `$${Math.floor(event.priceMin)}-${Math.floor(event.priceMax)}`
+          : `$${Math.floor(event.priceMin)}+`)
+      : null;
+    const isOnsale = event.status === 'onsale';
+    const isOffsale = event.status === 'offsale';
+
+    return `<div class="show-row ${isWatched?'watched':''}" onclick="window.open('${escapeHtml(ticketUrl)}','_blank','noopener,noreferrer')">
+      <div class="show-date">
+        <div class="show-date-month">${dt.month}</div>
+        <div class="show-date-day">${dt.day}</div>
+        <div class="show-date-year">${dt.year}</div>
+        ${dt.time ? `<div class="show-date-time">${dt.time}</div>` : ''}
+      </div>
+      <div class="show-body">
+        <div class="show-name">${escapeHtml(event.name)}</div>
+        <div class="show-meta">
+          <span class="show-venue">▸ ${escapeHtml(venue.name||'TBD')}</span>
+          <span class="show-location">${escapeHtml(locationStr)}</span>
+        </div>
+        <div class="show-tags">
+          ${isWatched ? '<span class="show-tag watched-tag">⛧ WATCHED</span>' : ''}
+          ${priceStr ? `<span class="show-tag price-tag">${priceStr}</span>` : ''}
+          ${isOffsale ? '<span class="show-tag sold-out">OFF SALE</span>' : ''}
+          ${event.lineup && event.lineup.length > 1 ? `<span class="show-tag">+${event.lineup.length-1} MORE</span>` : ''}
+        </div>
+      </div>
+      <div class="show-actions" onclick="event.stopPropagation()">
+        <a href="${escapeHtml(ticketUrl)}" target="_blank" rel="noopener noreferrer" class="ticket-btn">
+          ${isOffsale ? 'VIEW EVENT' : 'TICKETS →'}
+        </a>
+      </div>
+    </div>`;
+  }
+
+  function tplFeed() {
+    if (state.loading) {
+      return `<div class="empty-state">⛧ TAPPING THE WIRE ${tplDots()}<div class="empty-sub">Searching ${state.useWatchlist ? state.watchlist.length + ' watchlist bands' : 'Ticketmaster'}...</div></div>`;
+    }
+    if (state.error) {
+      return `<div class="empty-state">⛧ ${escapeHtml(state.error)} ⛧</div>`;
+    }
+    if (!state.searched) {
+      const wl = state.watchlist.length;
+      return `<div class="empty-state">
+        ⛧ ENTER A BAND OR USE YOUR WATCHLIST ⛧
+        <div class="empty-sub">${wl > 0 ? `You have ${wl} band${wl!==1?'s':''} on your Metal Tape watchlist — click WATCHLIST above to load all their shows` : 'Search any band, festival, or keyword to find upcoming shows'}</div>
+      </div>`;
+    }
+    if (state.events.length === 0) {
+      return `<div class="empty-state">⛧ NO SHOWS FOUND ⛧<div class="empty-sub">Try a different band, remove location filter, or check back later</div></div>`;
+    }
+    const grouped = groupByMonth(state.events);
+    return Object.entries(grouped).map(([month, events]) => `
+      <div class="month-header">── ${month} &nbsp; (${events.length} show${events.length!==1?'s':''})</div>
+      ${events.map(tplShowRow).join('')}
+    `).join('');
+  }
+
+  function tplStatus() {
+    if (state.loading) return `<div class="status-bar loading">⛧ SEARCHING TICKETMASTER ${tplDots()}</div>`;
+    if (!state.searched) return `<div class="status-bar">⛧ TICKET WIRE READY ⛧</div>`;
+    const loc = state.location.trim() || 'NATIONWIDE';
+    return `<div class="status-bar">
+      <span>SHOWING ${state.events.length} EVENT${state.events.length!==1?'S':''} · ${loc.toUpperCase()}</span>
+      <span style="color:#3a3a3a;">TICKETMASTER DISCOVERY API</span>
+    </div>`;
+  }
+
+  function tplBottom() {
+    return `<div class="bottom-bar">
+      <div>⛧ TICKET WIRE · ${state.watchlist.length} BANDS WATCHED ⛧</div>
+      <div class="powered-by">POWERED BY TICKETMASTER · THE METAL TAPE</div>
+    </div>`;
+  }
+
+  const Tickets = {
+    updateBandInput(v) { state.bandInput = v; },
+    updateLocation(v) {
+      state.location = v;
+      // Re-render to toggle radius buttons based on zip detection
+      const wasZip = /^\d{5}$/.test(state.location.replace(/\D/g,''));
+      if (wasZip) render();
+    },
+    setRadius(r) { state.radius = r; render(); },
+    toggleWatchlist() { state.useWatchlist = !state.useWatchlist; render(); },
+    runSearch() { runSearch(); },
+    toggleBtc(e) {
+      if (e) { e.stopPropagation(); e.preventDefault(); }
+      state.btcOpen = !state.btcOpen; state.btcCopied = false; render();
+    },
+    copyBtc(e) {
+      if (e) { e.stopPropagation(); e.preventDefault(); }
+      navigator.clipboard.writeText(BTC_ADDRESS).then(() => {
+        state.btcCopied = true; render();
+        setTimeout(() => { state.btcCopied = false; render(); }, 2500);
+      });
+    },
+  };
+  window.Tickets = Tickets;
+
+  document.addEventListener('click', function(e) {
+    if (state.btcOpen && !e.target.closest('.btc-panel') && !e.target.closest('.btc-btn')) {
+      state.btcOpen = false; render();
+    }
+  });
+
+  function render() {
+    const app = document.getElementById('app');
+    if (!app) return;
+    app.innerHTML =
+      tplMasthead() +
+      tplBarbedWire() +
+      tplTicker() +
+      tplBarbedWire() +
+      tplSearch() +
+      tplStatus() +
+      tplFeed() +
+      tplBarbedWire() +
+      tplBottom();
+  }
+
+  function init() {
+    render();
+    // Auto-load watchlist on first visit if user has bands
+    if (state.watchlist.length > 0) {
+      state.useWatchlist = true;
+      render();
+      runSearch();
+    }
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+})();
+</script>
+
+<!-- Impact.com affiliate verification (for Ticketmaster API access) -->
+<script type="text/javascript">(function(i,m,p,a,c,t){c.ire_o=p;c[p]=c[p]||function(){(c[p].a=c[p].a||[]).push(arguments)};t=a.createElement(m);var z=a.getElementsByTagName(m)[0];t.async=1;t.src=i;z.parentNode.insertBefore(t,z)})('https://utt.impactcdn.com/P-A7294522-5907-4541-b93b-7a24b649bd961.js','script','impactStat',document,window);impactStat('transformLinks');impactStat('trackImpression');</script>
+
+</body>
+</html>
